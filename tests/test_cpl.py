@@ -18,5 +18,5 @@ for segment in cpl.segments:
 tc_running = timecode.Timecode(0, cpl.edit_rate)
 
 for res in resources:
-	print(tc_running, res.file_id)
+	print(tc_running, tc_running + res.duration, res.file_id, f"({str(res.duration.framenumber).rjust(5)} frames)")
 	tc_running += res.duration
