@@ -1,39 +1,55 @@
 import xml.etree.ElementTree as et
-import pathlib, sys, dataclasses, typing
+import dataclasses, typing, re
+
+pat_nsextract = re.compile(r'^\{(.+)\}')
 
 @dataclasses.dataclass
 class Asset:
 	"""An asset packed into this IMF package"""
-	name:str
+	id:str
+	file_name:str
 	size:int
 	type:str
-	urn:str
+
+	@classmethod
+	def fromXml(cls, asset:et.Element, ns:dict) -> "Asset":
+		"""Create an asset from an XML element"""
+		id = asset.find("pkl:Id", ns).text
+		file_name = asset.find("pkl:OriginalFileName", ns).text
+		size = int(asset.find("pkl:Size", ns).text)
+		type = asset.find("pkl:Type", ns).text
+		
+		return cls(id, file_name, size, type)
+
 
 class Pkl:
 	"""An IMF PKL Packing List"""
 
-	ns = {"pkl":"http://www.smpte-ra.org/schemas/2067-2/2016/PKL"}
 	
-	def __init__(self):
+	def __init__(self, id:typing.Optional[str]=None):
+
+		self._id = id
 		self._assets = list()
 
 	@classmethod
 	def fromFile(cls, path:str) -> "Pkl":
 		"""Parse an existing PKL"""
 
-		pkl = cls()
+		ns = dict()
 
 		file_pkl = et.parse(path)
 		root = file_pkl.getroot()
 
-		assetlist = root.find("pkl:AssetList",cls.ns)
+		# Extract namespace from root tag
+		ns = {"pkl": pat_nsextract.match(root.tag).group(1)}
+		
+		id = root.find("pkl:Id", ns).text
+		assetlist = root.find("pkl:AssetList", ns)
+		
+		pkl = cls(id)
 
 		for asset in assetlist:
-			name = asset.find("pkl:OriginalFileName",cls.ns).text
-			size = int(asset.find("pkl:Size",cls.ns).text)
-			type = asset.find("pkl:Type",cls.ns).text
-			urn = asset.find("pkl:Id",cls.ns).text
-			pkl.addAsset(Asset(name, size, type, urn))
+			pkl.addAsset(Asset.fromXml(asset, ns))
 		
 		return pkl
 	
@@ -41,6 +57,15 @@ class Pkl:
 		"""Add an asset this package"""
 		self._assets.append(asset)
 	
+	def getAsset(self, id:str) -> "Asset":
+		for asset in self.assets:
+			if asset.id == id: return asset		
+		None
+	
 	@property
 	def assets(self) -> typing.List[Asset]:
 		return list(self._assets)
+
+	@property
+	def id(self) -> str:
+		return str(self._id)
