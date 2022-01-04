@@ -12,6 +12,7 @@ class Resource:
 	id:str
 	file_id:str
 	_edit_rate:typing.Tuple[int]
+	_start_frame:int
 	_duration:int
 	
 	@abstractclassmethod
@@ -19,20 +20,31 @@ class Resource:
 		id = resource.find("cpl:Id", ns).text
 		file_id = resource.find("cpl:TrackFileId", ns).text
 		edit_rate = tuple([int(x) for x in resource.find("cpl:EditRate",ns).text.split(' ')])
+		start_frame = int(resource.find("cpl:EntryPoint", ns).text)
 		duration = int(resource.find("cpl:SourceDuration", ns).text)
-		return cls(id, file_id, edit_rate, duration)
+		
+		return cls(id, file_id, edit_rate, start_frame, duration)
+
 	
 	@property
 	def edit_rate(self) -> float:
 		return self._edit_rate[0] / self._edit_rate[1]
 	
-	@property
-	def duration(self) -> timecode.Timecode:
-		return timecode.Timecode(self._duration, self.edit_rate)
 
 
 class ImageResource(Resource):
 	"""A main image resource"""
+	@property
+	def duration(self) -> timecode.Timecode:
+		return timecode.Timecode(self._duration, self.edit_rate)
+	
+	@property
+	def in_point(self) -> timecode.Timecode:
+		return timecode.Timecode(self._start_frame, self.edit_rate)
+	
+	@property
+	def out_point(self) -> timecode.Timecode:
+		return self.in_point + self.duration
 
 class AudioResource(Resource):
 	"""A main audio resource"""
@@ -96,9 +108,11 @@ class Cpl:
 	"""An IMF Composition Playlist"""
 
 	def __init__(self):
+		self._title      = str()
 		self._segments   = list()
 		self._namespaces = dict()
-		self._editrate = tuple()
+		self._editrate   = tuple()
+		self._tc_start   = None
 	
 	@classmethod
 	def fromFile(cls, path:str) -> "Cpl":
@@ -113,6 +127,17 @@ class Cpl:
 		cpl.addNamespace("cpl",pat_nsextract.match(root.tag).group(1))
 		cpl.setEditRate(*[int(x) for x in root.find("cpl:EditRate",cpl.namespaces).text.split(' ')])
 
+		# Get title
+		cpl.setTitle(root.find("cpl:ContentTitle", cpl.namespaces).text)
+
+		# Get the start timecode
+		tc_info = root.find("cpl:CompositionTimecode", cpl.namespaces)
+		tc_drop = tc_info.find("cpl:TimecodeDropFrame",cpl.namespaces).text == '1'
+		tc_rate = int(tc_info.find("cpl:TimecodeRate",cpl.namespaces).text)
+		tc_addr = tc_info.find("cpl:TimecodeStartAddress",cpl.namespaces).text
+
+		cpl.setStartTimecode(timecode.Timecode(tc_addr, rate=tc_rate, mode=timecode.Timecode.Mode.DF if tc_drop else timecode.Timecode.Mode.NDF))
+
 		for segment in root.find("cpl:SegmentList", cpl.namespaces):
 			seg = Segment.fromXmlSegment(segment, cpl.namespaces)
 			cpl.addSegement(seg)
@@ -123,11 +148,21 @@ class Cpl:
 	def namespaces(self) -> dict:
 		"""Known namespaces in the CPL"""
 		return self._namespaces
+
+	@property
+	def title(self) -> str:
+		"""Title of the CPL"""
+		return self._title
 	
 	@property
 	def edit_rate(self) -> float:
 		"""Calculate the edit rate"""
 		return self._editrate[0] / self._editrate[1]
+	
+	@property
+	def tc_start(self) -> timecode.Timecode:
+		"""The start timecode of the CPL"""
+		return self._tc_start
 
 	@property
 	def segments(self) -> typing.List[Segment]:
@@ -139,9 +174,17 @@ class Cpl:
 			raise KeyError(f"Namespace {name} already exists as {self._namespaces.get('name')}")	
 		self._namespaces.update({name: uri})
 	
+	def setTitle(self, title:str):
+		"""Set the title of the CPL"""
+		self._title = title
+	
 	def setEditRate(self, numerator:int, denominator:int):
 		"""Set the CPL edit rate"""
 		self._editrate = (numerator, denominator)
+	
+	def setStartTimecode(self, tc_start:timecode.Timecode):
+		"""Set the CPL start timecode"""
+		self._tc_start = tc_start
 	
 	def addSegement(self, segment:Segment):
 		"""Add a segment to the CPL"""
