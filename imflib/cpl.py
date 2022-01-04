@@ -66,7 +66,6 @@ class MainAudioSequence(Sequence):
 	"""Main audio sequence of a segment"""
 
 
-
 @dataclasses.dataclass
 class Segment:
 	"""A CPL segment"""
@@ -92,9 +91,6 @@ class Segment:
 				seg.sequences.append(MainAudioSequence.fromXml(sequence, ns))
 			
 		return seg
-
-
-
 
 class Cpl:
 	"""An IMF Composition Playlist"""
