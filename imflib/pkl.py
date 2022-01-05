@@ -24,7 +24,6 @@ class Asset:
 
 class Pkl:
 	"""An IMF PKL Packing List"""
-
 	
 	def __init__(self, id:typing.Optional[str]=None):
 
