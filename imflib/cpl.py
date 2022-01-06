@@ -30,14 +30,6 @@ class Resource:
 	def edit_rate(self) -> float:
 		return self._edit_rate[0] / self._edit_rate[1]
 	
-
-
-class ImageResource(Resource):
-	"""A main image resource"""
-	@property
-	def duration(self) -> timecode.Timecode:
-		return timecode.Timecode(self._duration, self.edit_rate)
-	
 	@property
 	def in_point(self) -> timecode.Timecode:
 		return timecode.Timecode(self._start_frame, self.edit_rate)
@@ -45,6 +37,14 @@ class ImageResource(Resource):
 	@property
 	def out_point(self) -> timecode.Timecode:
 		return self.in_point + self.duration
+
+	@property
+	def duration(self) -> timecode.Timecode:
+		return timecode.Timecode(self._duration, self.edit_rate)
+
+class ImageResource(Resource):
+	"""A main image resource"""
+	
 
 class AudioResource(Resource):
 	"""A main audio resource"""
