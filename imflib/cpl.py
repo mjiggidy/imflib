@@ -1,12 +1,11 @@
-from abc import abstractclassmethod
 import xml.etree.ElementTree as et
-import pathlib, sys, dataclasses, typing, re
+import pathlib, sys, dataclasses, typing, re, abc
 from posttools import timecode
 
 pat_nsextract = re.compile(r'^\{(.+)\}')
 
 @dataclasses.dataclass
-class Resource:
+class Resource(abc.ABC):
 	"""A resource within a sequence"""
 
 	id:str
@@ -14,8 +13,9 @@ class Resource:
 	_edit_rate:typing.Tuple[int]
 	_start_frame:int
 	_duration:int
+
 	
-	@abstractclassmethod
+	@classmethod
 	def fromXml(cls, resource, ns) -> "Resource":
 		id = resource.find("cpl:Id", ns).text
 		file_id = resource.find("cpl:TrackFileId", ns).text
@@ -25,10 +25,19 @@ class Resource:
 		
 		return cls(id, file_id, edit_rate, start_frame, duration)
 
+	@abc.abstractproperty
+	def edit_units(self) -> str:
+		"""Units used to express the edit rate"""
 	
 	@property
 	def edit_rate(self) -> float:
 		return self._edit_rate[0] / self._edit_rate[1]
+	
+	@property
+	def edit_rate_formatted(self) -> str:
+		"""Edit rate formatted nicely as a string"""
+		rate = int(self.edit_rate) if self.edit_rate.is_integer() else round(self.edit_rate, 2)
+		return f"{rate} {self.edit_units}"
 	
 	@property
 	def in_point(self) -> timecode.Timecode:
@@ -44,11 +53,18 @@ class Resource:
 
 class ImageResource(Resource):
 	"""A main image resource"""
+
+	@property
+	def edit_units(self) -> str:
+		return "fps"
 	
 
 class AudioResource(Resource):
 	"""A main audio resource"""
 
+	@property
+	def edit_units(self) -> str:
+		return "Hz"
 
 @dataclasses.dataclass
 class Sequence:
@@ -56,7 +72,7 @@ class Sequence:
 	id:str
 	resources:typing.List[Resource]
 
-	@abstractclassmethod
+	@classmethod
 	def fromXml(cls, sequence, ns) -> "Sequence":
 		id = sequence.find("cpl:Id",ns).text
 		resources = list()
