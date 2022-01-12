@@ -28,5 +28,5 @@ class Imf:
 			raise FileNotFoundError("Could not find a PKL in this directory")
 
 		input_pkl = pkl.Pkl.fromFile(str(glob_temp[0]))
-
+		
 		return cls(input_cpl, input_pkl)
