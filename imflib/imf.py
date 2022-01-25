@@ -28,5 +28,9 @@ class Imf:
 			raise FileNotFoundError("Could not find a PKL in this directory")
 
 		input_pkl = pkl.Pkl.fromFile(str(glob_temp[0]))
+
+		# Marry the pkl assets to the CPL
+		for res in input_cpl.resources:
+			res.setAsset(input_pkl.getAsset(res.file_id))
 		
 		return cls(input_cpl, input_pkl)
