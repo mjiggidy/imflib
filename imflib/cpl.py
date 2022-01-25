@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as et
-import pathlib, sys, dataclasses, typing, re, abc
+import dataclasses, typing, re, abc
 from posttools import timecode
+from . import pkl
 
 pat_nsextract = re.compile(r'^\{(.+)\}')
 
@@ -13,17 +14,22 @@ class Resource(abc.ABC):
 	_edit_rate:typing.Tuple[int]
 	_start_frame:int
 	_duration:int
-
+	_asset:pkl.Asset
 	
 	@classmethod
 	def fromXml(cls, resource, ns) -> "Resource":
 		id = resource.find("cpl:Id", ns).text
 		file_id = resource.find("cpl:TrackFileId", ns).text
-		edit_rate = tuple([int(x) for x in resource.find("cpl:EditRate",ns).text.split(' ')])
+
+		res_edit_rate = resource.find("cpl:EditRate",ns)
+		# FIXME: Quick n dirty default values
+		edit_rate = tuple([int(x) for x in res_edit_rate.text.split(' ')]) if res_edit_rate is not None else (24000, 1001,)
+		
+
 		start_frame = int(resource.find("cpl:EntryPoint", ns).text)
 		duration = int(resource.find("cpl:SourceDuration", ns).text)
 		
-		return cls(id, file_id, edit_rate, start_frame, duration)
+		return cls(id, file_id, edit_rate, start_frame, duration, None)
 
 	@abc.abstractproperty
 	def edit_units(self) -> str:
@@ -50,6 +56,15 @@ class Resource(abc.ABC):
 	@property
 	def duration(self) -> timecode.Timecode:
 		return timecode.Timecode(self._duration, self.edit_rate)
+	
+	@property
+	def file_asset(self) -> pkl.Asset:
+		"""Get the file asset associated with this resource"""
+		return self._asset or None
+	
+	def setAsset(self, asset:pkl.Asset):
+		"""Set the file asset associated with this resource"""
+		self._asset = asset
 
 class ImageResource(Resource):
 	"""A main image resource"""
@@ -119,6 +134,14 @@ class Segment:
 				seg.sequences.append(MainAudioSequence.fromXml(sequence, ns))
 			
 		return seg
+	
+	@property
+	def resources(self) -> typing.List[Resource]:
+		reslist = list()
+		for seq in self.sequences:
+			reslist.extend(seq.resources)
+		return reslist
+		
 
 class Cpl:
 	"""An IMF Composition Playlist"""
@@ -148,9 +171,15 @@ class Cpl:
 
 		# Get the start timecode
 		tc_info = root.find("cpl:CompositionTimecode", cpl.namespaces)
-		tc_drop = tc_info.find("cpl:TimecodeDropFrame",cpl.namespaces).text == '1'
-		tc_rate = int(tc_info.find("cpl:TimecodeRate",cpl.namespaces).text)
-		tc_addr = tc_info.find("cpl:TimecodeStartAddress",cpl.namespaces).text
+		if tc_info:
+			tc_drop = tc_info.find("cpl:TimecodeDropFrame",cpl.namespaces).text == '1'
+			tc_rate = int(tc_info.find("cpl:TimecodeRate",cpl.namespaces).text)
+			tc_addr = tc_info.find("cpl:TimecodeStartAddress",cpl.namespaces).text
+		else:
+			# FIXME: Quick n dirty defaults that need to be revisited
+			tc_drop = False
+			tc_rate = cpl.edit_rate
+			tc_addr = "00:00:00:00"
 
 		cpl.setStartTimecode(timecode.Timecode(tc_addr, rate=tc_rate, mode=timecode.Timecode.Mode.DF if tc_drop else timecode.Timecode.Mode.NDF))
 
@@ -183,6 +212,13 @@ class Cpl:
 	@property
 	def segments(self) -> typing.List[Segment]:
 		return self._segments
+	
+	@property
+	def resources(self) -> typing.List[Resource]:
+		reslist = list()
+		for seg in self.segments:
+			reslist.extend(seg.resources)
+		return reslist
 	
 	def addNamespace(self, name:str, uri:str):
 		"""Add a known namespace to the zeitgeist"""
