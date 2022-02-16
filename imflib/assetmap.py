@@ -1,14 +1,16 @@
-import dataclasses, typing, pathlib
+import dataclasses, typing
 import xml.etree.ElementTree as et
+import datetime
+from .imf import xsd_datetime_to_datetime
 
-@dataclasses.dataclass()
+@dataclasses.dataclass(frozen=True)
 class AssetMap:
 	"""An Asset Map component of an IMF package"""
 	id:str
 	annotation_text:str
 	creator:str
-	volume_count:int	# TODO: Make dynamic property?
-	issue_date:str
+	volume_count:int	# TODO: Make dynamic property based on asset chunks?
+	issue_date:datetime.datetime
 	issuer:str
 	assets:list["Asset"]
 
@@ -25,9 +27,7 @@ class AssetMap:
 		annotation_text = xml.find("AnnotationText",ns).text if xml.find("AnnotationText",ns) is not None else ""	# None instead of empty string...?
 		creator = xml.find("Creator",ns).text
 		volume_count = int(xml.find("VolumeCount",ns).text)
-		# TODO: KILLIN ME
-		# issue_date = datetime.datetime.fromisoformat(xml.find("IssueDate",ns).text)
-		issue_date = xml.find("IssueDate",ns).text
+		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		issuer = xml.find("Issuer",ns).text
 		assets = Asset.fromXml(xml.find("AssetList",ns), ns)
 
@@ -45,7 +45,7 @@ class AssetMap:
 
 
 
-@dataclasses.dataclass()
+@dataclasses.dataclass(frozen=True)
 class Asset:
 	"""An Asset as defined in an IMF AssetMap"""
 	id:str
@@ -69,17 +69,17 @@ class Asset:
 		return sum(chunk.size for chunk in self.chunks)
 	
 	@property
-	def file_paths(self)->list[pathlib.Path]:
+	def file_paths(self)->list[str]:
 		"""All file paths associated with this asset"""
 		return [chunk.file_path for chunk in self.chunks]
 
 
 
 
-@dataclasses.dataclass()
+@dataclasses.dataclass(frozen=True)
 class Chunk:
 	"""A chunk of an Asset"""
-	file_path:pathlib.Path
+	file_path:str
 	volume_index:int
 	offset:int
 	size:int
@@ -89,7 +89,7 @@ class Chunk:
 		"""Parse a chunk of an Asset from a ChunkList"""
 		chunks = []
 		for chunk in xml.findall("Chunk",ns):
-			path = pathlib.Path(chunk.find("Path",ns).text)
+			path = chunk.find("Path",ns).text
 			volume_index = int(chunk.find("VolumeIndex",ns).text) if chunk.find("VolumeIndex",ns) is not None else 1
 			offset = int(chunk.find("Offset",ns).text) if chunk.find("Offset",ns) is not None else 0
 			size = int(chunk.find("Length",ns).text) if chunk.find("Length",ns) is not None else 0
