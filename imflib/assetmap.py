@@ -1,4 +1,4 @@
-import dataclasses, datetime, typing, pathlib
+import dataclasses, typing, pathlib
 import xml.etree.ElementTree as et
 
 @dataclasses.dataclass()
@@ -8,7 +8,7 @@ class AssetMap:
 	annotation_text:str
 	creator:str
 	volume_count:int	# TODO: Make dynamic property?
-	issue_date:datetime.datetime
+	issue_date:str
 	issuer:str
 	assets:list["Asset"]
 
@@ -22,10 +22,12 @@ class AssetMap:
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"AssetMap":
 		"""Parse the AssetMap from XML"""
 		id = xml.find("Id",ns).text
-		annotation_text = xml.find("AnnotationText",ns).text if xml.find("AnnotationText",ns) is not None else ""
+		annotation_text = xml.find("AnnotationText",ns).text if xml.find("AnnotationText",ns) is not None else ""	# None instead of empty string...?
 		creator = xml.find("Creator",ns).text
-		volume_count = int(xml.find("VolumeCount",ns).text) if isinstance(xml.find("VolumeCount",ns),int) else 0
-		issue_date = datetime.datetime.fromisoformat(xml.find("IssueDate",ns).text) if xml.find("IssueDate",ns) is not None else datetime.datetime()
+		volume_count = int(xml.find("VolumeCount",ns).text)
+		# TODO: KILLIN ME
+		# issue_date = datetime.datetime.fromisoformat(xml.find("IssueDate",ns).text)
+		issue_date = xml.find("IssueDate",ns).text
 		issuer = xml.find("Issuer",ns).text
 		assets = Asset.fromXml(xml.find("AssetList",ns), ns)
 
@@ -88,8 +90,8 @@ class Chunk:
 		chunks = []
 		for chunk in xml.findall("Chunk",ns):
 			path = pathlib.Path(chunk.find("Path",ns).text)
-			volume_index = int(chunk.find("VolumeIndex",ns).text)
-			offset = int(chunk.find("Offset",ns).text)
-			size = int(chunk.find("Length",ns).text)
+			volume_index = int(chunk.find("VolumeIndex",ns).text) if chunk.find("VolumeIndex",ns) is not None else 1
+			offset = int(chunk.find("Offset",ns).text) if chunk.find("Offset",ns) is not None else 0
+			size = int(chunk.find("Length",ns).text) if chunk.find("Length",ns) is not None else 0
 			chunks.append(cls(path, volume_index, offset, size))
 		return chunks
