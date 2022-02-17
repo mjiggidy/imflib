@@ -14,5 +14,8 @@ for path_imf in sys.argv[1:]:
 		print(f"{path_pkl.name}:")
 		print(f"Created on {pkl.issue_date} by {pkl.issuer} using {pkl.creator}")
 		print(f"Annotations: {pkl.annotation_text}")
-		print(f"Contains {len(pkl.assets)} asset(s) totalling {pkl.total_size/1000/1000/1000:.2f} GB")
+		print(f"Contains {len(pkl.assets)} asset(s) totaling {pkl.total_size/1000/1000/1000:.2f} GB:")
+
+		for asset in pkl.assets:
+			print(f"  {asset.file_name} ({asset.type}; {asset.size/1000/1000/1000:.2f} GB; hashed as {asset.hash_type}): {asset.annotation_text}")
 		print("---")
