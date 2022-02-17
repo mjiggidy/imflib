@@ -1,7 +1,8 @@
 import xml.etree.ElementTree as et
-import dataclasses, typing, re, abc
+import dataclasses, typing, re, abc, datetime
 from posttools import timecode
 from . import pkl
+from imflib import xsd_datetime_to_datetime
 
 pat_nsextract = re.compile(r'^\{(.+)\}')
 
@@ -141,30 +142,111 @@ class Segment:
 		for seq in self.sequences:
 			reslist.extend(seq.resources)
 		return reslist
-		
 
+@dataclasses.dataclass(frozen=True)
+class ContentVersion:
+	"""A content version"""
+
+@dataclasses.dataclass(frozen=True)
+class EssenceDescriptor:
+	"""A description of an essence"""
+
+@dataclasses.dataclass(frozen=True)
+class Locale:
+	"""Localization info"""
+
+@dataclasses.dataclass(frozen=True)
+class ExtensionProperty:
+	"""Application extension"""
+
+@dataclasses.dataclass(frozen=True)
+class KeyInfo:
+	"""Signing info"""
+
+@dataclasses.dataclass(frozen=True)
+class Signature:
+	"""ds:Signature"""
+		
+@dataclasses.dataclass(frozen=True)
 class Cpl:
 	"""An IMF Composition Playlist"""
 
-	def __init__(self):
-		self._title      = str()
-		self._segments   = list()
-		self._namespaces = dict()
-		self._editrate   = tuple()
-		self._tc_start   = None
+	id:str
+	issue_date:datetime.datetime
+	title:str
+	edit_rate:tuple[int,int]
+	segments:list["Segment"]
+	
+	annotation_text:str=""
+	issuer:str=""
+	creator:str=""
+	content_originator:str=""
+	content_kind:str=""
+
+	tc_start:timecode.Timecode=None
+	tc_duration:timecode.Timecode=None
+	content_versions:list["ContentVersion"]=None
+	essence_descriptors:list["EssenceDescriptor"]=None
+	locales:list["Locale"]=None
+	extension_properties:list["ExtensionProperty"]=None
+	signer:KeyInfo=None
+	signature:Signature=None
+
 	
 	@classmethod
 	def fromFile(cls, path:str) -> "Cpl":
 		"""Parse an existing CPL"""
-
-		cpl = cls()
-
 		file_cpl = et.parse(path)
-		root = file_cpl.getroot()
+		return cls.fromXml(file_cpl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-3/2016"})
+	
+	@staticmethod
+	def timecode_from_composition(xml:et.Element, ns:typing.Optional[dict]=None)->timecode.Timecode:
+		"""Return a Timecode object from an XSD CompositionTimecodeType"""
+		tc_addr = xml.find("TimecodeStartAddress",ns).text
+		tc_rate = int(xml.find("TimecodeRate",ns).text)
+		tc_drop = xml.find("TimecodeDropFrame",ns).text == 1
+		return timecode.Timecode(tc_addr, tc_rate, timecode.Timecode.Mode.DF if tc_drop else timecode.Timecode.Mode.NDF)
 
-		# Get the CPL namespace
-		cpl.addNamespace("cpl",pat_nsextract.match(root.tag).group(1))
-		cpl.setEditRate(*[int(x) for x in root.find("cpl:EditRate",cpl.namespaces).text.split(' ')])
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Cpl":
+		
+		id = xml.find("Id",ns).text
+		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
+		title = xml.find("ContentTitle",ns).text
+
+		annotation_text = xml.find("Annotation",ns).text if xml.find("Annotation",ns) is not None else ""
+		issuer = xml.find("Issuer",ns).text if xml.find("Issuer",ns) is not None else ""
+		creator = xml.find("Creator",ns).text if xml.find("Creator",ns) is not None else ""
+		content_originator = xml.find("ContentOriginator",ns).text if xml.find("ContentOriginator",ns) is not None else ""
+		content_kind = xml.find("ContentKind",ns).text if xml.find("ContentKind",ns) is not None else ""
+
+		# Rate and timecode
+		edit_rate = tuple(int(x) for x in xml.find("EditRate",ns).text.split(' '))
+		tc_start = cls.timecode_from_composition(xml.find("CompositionTimecode",ns),ns) if xml.find("CompositionTimecode",ns) is not None \
+			else timecode.Timecode("00:00:00:00",float(edit_rate[0])/float(edit_rate[1]))
+		tc_duration = cls.timecode_from_composition(xml.find("TotalRuntime",ns),ns) if xml.find("TotalRuntime",ns) is not None \
+			else None
+		if tc_duration and not tc_start.is_compatible(tc_duration):
+			raise timecode.IncompatibleTimecode(f"Composition timecode start {tc_start} is not compatible with composition duration {tc_duration}")
+
+		return cls(
+			id=id,
+			issue_date=issue_date,
+			title=title,
+			edit_rate=edit_rate,
+			segments=[],
+			annotation_text=annotation_text,
+			issuer=issuer,
+			creator=creator,
+			content_originator=content_originator,
+			content_kind=content_kind,
+
+			tc_start=tc_start,
+			tc_duration=tc_duration
+		)
+
+
 
 		# Get title
 		cpl.setTitle(root.find("cpl:ContentTitle", cpl.namespaces).text)
@@ -188,56 +270,57 @@ class Cpl:
 			cpl.addSegement(seg)
 
 		return cpl		
-
-	@property
-	def namespaces(self) -> dict:
-		"""Known namespaces in the CPL"""
-		return self._namespaces
-
-	@property
-	def title(self) -> str:
-		"""Title of the CPL"""
-		return self._title
-	
-	@property
-	def edit_rate(self) -> float:
-		"""Calculate the edit rate"""
-		return self._editrate[0] / self._editrate[1]
-	
-	@property
-	def tc_start(self) -> timecode.Timecode:
-		"""The start timecode of the CPL"""
-		return self._tc_start
-
-	@property
-	def segments(self) -> typing.List[Segment]:
-		return self._segments
-	
-	@property
-	def resources(self) -> typing.List[Resource]:
-		reslist = list()
-		for seg in self.segments:
-			reslist.extend(seg.resources)
-		return reslist
-	
-	def addNamespace(self, name:str, uri:str):
-		"""Add a known namespace to the zeitgeist"""
-		if name in self._namespaces:
-			raise KeyError(f"Namespace {name} already exists as {self._namespaces.get('name')}")	
-		self._namespaces.update({name: uri})
-	
-	def setTitle(self, title:str):
-		"""Set the title of the CPL"""
-		self._title = title
-	
-	def setEditRate(self, numerator:int, denominator:int):
-		"""Set the CPL edit rate"""
-		self._editrate = (numerator, denominator)
-	
-	def setStartTimecode(self, tc_start:timecode.Timecode):
-		"""Set the CPL start timecode"""
-		self._tc_start = tc_start
-	
-	def addSegement(self, segment:Segment):
-		"""Add a segment to the CPL"""
-		self._segments.append(segment)
+#
+#	@property
+#	def namespaces(self) -> dict:
+#		"""Known namespaces in the CPL"""
+#		return self._namespaces
+#
+#	@property
+#	def title(self) -> str:
+#		"""Title of the CPL"""
+#		return self._title
+#	
+#	@property
+#	def edit_rate(self) -> float:
+#		"""Calculate the edit rate"""
+#		return self._editrate[0] / self._editrate[1]
+#	
+#	@property
+#	def tc_start(self) -> timecode.Timecode:
+#		"""The start timecode of the CPL"""
+#		return self._tc_start
+#
+#	@property
+#	def segments(self) -> typing.List[Segment]:
+#		return self._segments
+#	
+#	@property
+#	def resources(self) -> typing.List[Resource]:
+#		reslist = list()
+#		for seg in self.segments:
+#			reslist.extend(seg.resources)
+#		return reslist
+#	
+#	def addNamespace(self, name:str, uri:str):
+#		"""Add a known namespace to the zeitgeist"""
+#		if name in self._namespaces:
+#			raise KeyError(f"Namespace {name} already exists as {self._namespaces.get('name')}")	
+#		self._namespaces.update({name: uri})
+#	
+#	def setTitle(self, title:str):
+#		"""Set the title of the CPL"""
+#		self._title = title
+#	
+#	def setEditRate(self, numerator:int, denominator:int):
+#		"""Set the CPL edit rate"""
+#		self._editrate = (numerator, denominator)
+#	
+#	def setStartTimecode(self, tc_start:timecode.Timecode):
+#		"""Set the CPL start timecode"""
+#		self._tc_start = tc_start
+#	
+#	def addSegement(self, segment:Segment):
+#		"""Add a segment to the CPL"""
+#		self._segments.append(segment)
+#

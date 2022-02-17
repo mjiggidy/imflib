@@ -1,22 +1,10 @@
-from imflib.cpl import Cpl, MainImageSequence
+from imflib import cpl
 from posttools import timecode
-import sys
+import sys, pathlib
 
 if len(sys.argv) < 2:
-	sys.exit("Usage: test_cpl.py path_to_cpl")
+	sys.exit("Usage: test_cpl.py path_to_imf [path_to_imf ...]")
 
-cpl = Cpl.fromFile(sys.argv[1])
-
-resources = list()
-
-for segment in cpl.segments:
-	for sequence in segment.sequences:
-		if isinstance(sequence, MainImageSequence):
-			for resource in sequence.resources:
-				resources.append(resource)
-
-tc_running = timecode.Timecode(0, cpl.edit_rate)
-
-for res in resources:
-	print(tc_running, tc_running + res.duration, res.file_id, f"({str(res.duration.framenumber).rjust(5)} frames)")
-	tc_running += res.duration
+for path_imf in sys.argv[1:]:
+	for path_cpl in pathlib.Path(path_imf).glob("CPL_*.xml"):
+		print(cpl.Cpl.fromFile(path_cpl))
