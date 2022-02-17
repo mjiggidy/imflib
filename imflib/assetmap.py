@@ -1,7 +1,6 @@
-import dataclasses, typing
+import dataclasses, typing, datetime, re
 import xml.etree.ElementTree as et
-import datetime
-from .imf import xsd_datetime_to_datetime
+from imflib import xsd_datetime_to_datetime
 
 @dataclasses.dataclass(frozen=True)
 class AssetMap:
@@ -43,6 +42,12 @@ class AssetMap:
 		"""Total size of the assets in this map"""
 		return sum(asset.size for asset in self.assets)
 
+	def getAsset(self, id:str) -> "Asset":
+		"""Get an Asset from the AssetMap based on the URN ID"""
+		for asset in self.assets:
+			if asset.id == id: return asset		
+		return None
+
 
 
 @dataclasses.dataclass(frozen=True)
@@ -72,9 +77,6 @@ class Asset:
 	def file_paths(self)->list[str]:
 		"""All file paths associated with this asset"""
 		return [chunk.file_path for chunk in self.chunks]
-
-
-
 
 @dataclasses.dataclass(frozen=True)
 class Chunk:
