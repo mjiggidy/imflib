@@ -147,13 +147,72 @@ class Segment:
 class ContentVersion:
 	"""A content version"""
 
+	id:str
+	label:str
+	additional:typing.Any=None	# TODO: Investigate handling of xs:any tags, ambiguous in spec
+
+	@classmethod
+	def fromXml(cls, xml:et.ElementTree, ns:typing.Optional[dict]=None)->"ContentVersion":
+		id = xml.find("Id",ns).text
+		label = xml.find("LabelText",ns).text
+		return cls(id, label)
+
 @dataclasses.dataclass(frozen=True)
 class EssenceDescriptor:
 	"""A description of an essence"""
 
 @dataclasses.dataclass(frozen=True)
+class ContentMaturityRating:
+	"""Content maturity rating and info"""
+	agency:str
+	rating:str
+	audiences:typing.Optional[list[str]]=None
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict])->"ContentMaturityRating":
+		"""Parse a ContentMaturtyRatingType from a ContentMaturityRatingList"""
+		agency = xml.find("Agency",ns).text
+		rating = xml.find("Rating",ns).text
+
+		audience_list = list()
+		for aud in xml.findall("Audience",ns):
+			# TODO: Retain scope attribute?
+			audience_list.append(aud.text)
+		
+		return cls(agency, rating, audience_list)
+
+@dataclasses.dataclass(frozen=True)
 class Locale:
 	"""Localization info"""
+
+	annotation_text:typing.Optional[str]=None
+	languages:typing.Optional[list[str]]=None
+	regions:typing.Optional[list[str]]=None
+	content_maturity_ratings:typing.Optional[list[ContentMaturityRating]]=None
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Locale":
+		"""Parse a LocaleType from a LocaleListType"""
+		annotation_text = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
+		
+		languages = []
+		for lang_list in xml.findall("LanguageList",ns):
+			for lang in lang_list.findall("Language",ns):
+				languages.append(lang.text)
+		
+		regions = []
+		for reg_list in xml.findall("RegionList",ns):
+			for reg in reg_list.findall("Region",ns):
+				regions.append(reg.text)
+
+		ratings = []
+		for r_list in xml.findall("ContentMaturityRatingList",ns):
+			for rating in r_list.findall("ContentMaturityRating",ns):
+				ratings.append(ContentMaturityRating.fromXml(rating, ns))
+			
+		return cls(annotation_text, languages, regions, ratings)
+		
+
 
 @dataclasses.dataclass(frozen=True)
 class ExtensionProperty:
@@ -182,23 +241,17 @@ class Cpl:
 	creator:str=""
 	content_originator:str=""
 	content_kind:str=""
+	runtime:str=""
 
 	tc_start:timecode.Timecode=None
-	tc_duration:timecode.Timecode=None
 	content_versions:list["ContentVersion"]=None
-	essence_descriptors:list["EssenceDescriptor"]=None
 	locales:list["Locale"]=None
+
+	essence_descriptors:list["EssenceDescriptor"]=None
 	extension_properties:list["ExtensionProperty"]=None
 	signer:KeyInfo=None
 	signature:Signature=None
 
-	
-	@classmethod
-	def fromFile(cls, path:str) -> "Cpl":
-		"""Parse an existing CPL"""
-		file_cpl = et.parse(path)
-		return cls.fromXml(file_cpl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-3/2016"})
-	
 	@staticmethod
 	def timecode_from_composition(xml:et.Element, ns:typing.Optional[dict]=None)->timecode.Timecode:
 		"""Return a Timecode object from an XSD CompositionTimecodeType"""
@@ -206,8 +259,13 @@ class Cpl:
 		tc_rate = int(xml.find("TimecodeRate",ns).text)
 		tc_drop = xml.find("TimecodeDropFrame",ns).text == 1
 		return timecode.Timecode(tc_addr, tc_rate, timecode.Timecode.Mode.DF if tc_drop else timecode.Timecode.Mode.NDF)
-
-
+	
+	@classmethod
+	def fromFile(cls, path:str) -> "Cpl":
+		"""Parse an existing CPL"""
+		file_cpl = et.parse(path)
+		return cls.fromXml(file_cpl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-3/2016"})
+	
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Cpl":
 		
@@ -225,10 +283,22 @@ class Cpl:
 		edit_rate = tuple(int(x) for x in xml.find("EditRate",ns).text.split(' '))
 		tc_start = cls.timecode_from_composition(xml.find("CompositionTimecode",ns),ns) if xml.find("CompositionTimecode",ns) is not None \
 			else timecode.Timecode("00:00:00:00",float(edit_rate[0])/float(edit_rate[1]))
-		tc_duration = cls.timecode_from_composition(xml.find("TotalRuntime",ns),ns) if xml.find("TotalRuntime",ns) is not None \
-			else None
-		if tc_duration and not tc_start.is_compatible(tc_duration):
-			raise timecode.IncompatibleTimecode(f"Composition timecode start {tc_start} is not compatible with composition duration {tc_duration}")
+
+		# Runtime is just hh:mm:ss and not to be trusted
+		runtime = xml.find("TotalRuntime",ns).text if xml.find("TotalRuntime",ns) is not None else ""
+		
+		# ContentVersionList
+		content_versions = list()
+		if xml.find("ContentVersionList",ns) is not None:
+			for cv in xml.find("ContentVersionList",ns).findall("ContentVersion",ns):
+				content_versions.append(ContentVersion.fromXml(cv,ns))
+		
+		# Locales
+		locale_list = list()
+		for loc_list in xml.findall("LocaleList",ns):
+			for locale in loc_list.findall("Locale",ns):
+				locale_list.append(Locale.fromXml(locale,ns))
+
 
 		return cls(
 			id=id,
@@ -243,27 +313,12 @@ class Cpl:
 			content_kind=content_kind,
 
 			tc_start=tc_start,
-			tc_duration=tc_duration
+			runtime=runtime,
+
+			content_versions=content_versions,
+			locales=locale_list
 		)
 
-
-
-		# Get title
-		cpl.setTitle(root.find("cpl:ContentTitle", cpl.namespaces).text)
-
-		# Get the start timecode
-		tc_info = root.find("cpl:CompositionTimecode", cpl.namespaces)
-		if tc_info:
-			tc_drop = tc_info.find("cpl:TimecodeDropFrame",cpl.namespaces).text == '1'
-			tc_rate = int(tc_info.find("cpl:TimecodeRate",cpl.namespaces).text)
-			tc_addr = tc_info.find("cpl:TimecodeStartAddress",cpl.namespaces).text
-		else:
-			# FIXME: Quick n dirty defaults that need to be revisited
-			tc_drop = False
-			tc_rate = cpl.edit_rate
-			tc_addr = "00:00:00:00"
-
-		cpl.setStartTimecode(timecode.Timecode(tc_addr, rate=tc_rate, mode=timecode.Timecode.Mode.DF if tc_drop else timecode.Timecode.Mode.NDF))
 
 		for segment in root.find("cpl:SegmentList", cpl.namespaces):
 			seg = Segment.fromXmlSegment(segment, cpl.namespaces)
