@@ -1,3 +1,4 @@
+from xml.dom.minidom import Element
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime
 from posttools import timecode
@@ -110,31 +111,36 @@ class MainAudioSequence(Sequence):
 	"""Main audio sequence of a segment"""
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Segment:
 	"""A CPL segment"""
 	id:str
 	sequences:typing.List[Sequence]
+	annotation_text:typing.Optional[str]=""
 
 	@classmethod
-	def fromXmlSegment(cls, xml_segment:et.Element, ns:dict) -> "Segment":
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
 
-		seg = cls(xml_segment.find("cpl:Id",ns).text, list())
+		id = xml.find("Id",ns).text
+		annotation_text = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
 
-		for sequence in xml_segment.find("cpl:SequenceList", ns):
-			# Try to collect any new namespaces
-			try:
-				ns.update({"cc": pat_nsextract.match(sequence.tag).group(1)})
-			except KeyError:
-				pass
+		sequence_list = list()
+
+		for sequence in xml.find("SequenceList", ns):
+
+			continue
 
 			if "MainImageSequence" in sequence.tag:
-				seg.sequences.append(MainImageSequence.fromXml(sequence, ns))
+				sequence_list.append(MainImageSequence.fromXml(sequence, ns))
 		
 			elif "MainAudioSequence" in sequence.tag:
-				seg.sequences.append(MainAudioSequence.fromXml(sequence, ns))
+				sequence_list.append(MainAudioSequence.fromXml(sequence, ns))
 			
-		return seg
+		return cls(
+			id=id,
+			sequences=sequence_list,
+			annotation_text=annotation_text
+		)
 	
 	@property
 	def resources(self) -> typing.List[Resource]:
@@ -217,14 +223,58 @@ class Locale:
 @dataclasses.dataclass(frozen=True)
 class ExtensionProperty:
 	"""Application extension"""
+	# TODO: Spec loosely defines as lax processing, any namespace. Cool.
+	# TODO: Decide upon a better implementation.
+	raw_xml:str
 
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ExtensionProperty":
+		"""Capture an extention property from the list"""
+		try:
+			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
+		except Exception as e:
+			raw_xml = f"Unknown extension property: {e}"
+		
+		return cls(raw_xml)
+
+
+
+# TODO: UNTESTED
 @dataclasses.dataclass(frozen=True)
-class KeyInfo:
+class Signer:
 	"""Signing info"""
+	raw_xml:str
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
+		"""ds:KeyInfoType from XML"""
+
+		ns.update({"ds":"http://www.w3.org/2000/09/xmldsig#"})
+
+		try:
+			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
+		except Exception as e:
+			raw_xml = f"Unknown signer type: {e}"
+		return cls(raw_xml)
+
+		
 
 @dataclasses.dataclass(frozen=True)
 class Signature:
 	"""ds:Signature"""
+
+	raw_xml:str
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
+		"""ds:KeyInfoType from XML"""
+
+		ns.update({"ds":"http://www.w3.org/2000/09/xmldsig#"})
+		try:
+			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
+		except Exception as e:
+			raw_xml = f"Unknown signature type: {e}"
+		return cls(raw_xml)
 		
 @dataclasses.dataclass(frozen=True)
 class Cpl:
@@ -247,9 +297,10 @@ class Cpl:
 	content_versions:list["ContentVersion"]=None
 	locales:list["Locale"]=None
 
+	# Still need
 	essence_descriptors:list["EssenceDescriptor"]=None
 	extension_properties:list["ExtensionProperty"]=None
-	signer:KeyInfo=None
+	signer:Signer=None
 	signature:Signature=None
 
 	@staticmethod
@@ -298,6 +349,34 @@ class Cpl:
 		for loc_list in xml.findall("LocaleList",ns):
 			for locale in loc_list.findall("Locale",ns):
 				locale_list.append(Locale.fromXml(locale,ns))
+		
+		# Application extensions
+		extensions_list = []
+		for prop_list in xml.findall("ExtensionProperties",ns):
+			for prop in prop_list:
+				extensions_list.append(ExtensionProperty.fromXml(prop,ns))
+		
+		# Signer
+		# TODO: Fully implement
+		if xml.find("Signer",ns) is not None:
+			signer = Signer.fromXml(xml.find("Signer",ns),ns)
+		else:
+			signer=None
+		
+		# Signature
+		# TODO: Fully implement
+		if xml.find("ds:Signature",{"ds":"http://www.w3.org/2000/09/xmldsig#"}) is not None:
+			signature = Signature.fromXml(xml.find("ds:Signature",{"ds":"http://www.w3.org/2000/09/xmldsig#"}), ns)
+		else:
+			signature=None
+		
+		# TODO: Signer and signature must be either both present, or both omitted
+		# TODO: Do a check real good ok
+		
+		# Segments!
+		segment_list = list()
+		for segment in xml.find("SegmentList",ns):
+			segment_list.append(Segment.fromXml(segment,ns))
 
 
 		return cls(
@@ -305,7 +384,7 @@ class Cpl:
 			issue_date=issue_date,
 			title=title,
 			edit_rate=edit_rate,
-			segments=[],
+			segments=segment_list,
 			annotation_text=annotation_text,
 			issuer=issuer,
 			creator=creator,
@@ -316,7 +395,11 @@ class Cpl:
 			runtime=runtime,
 
 			content_versions=content_versions,
-			locales=locale_list
+			locales=locale_list,
+			extension_properties=extensions_list,
+
+			signer=signer,
+			signature=signature
 		)
 
 
