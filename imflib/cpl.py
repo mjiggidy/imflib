@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime
 from posttools import timecode
-from imflib import xsd_datetime_to_datetime
+from imflib import xsd_datetime_to_datetime, xsd_optional_string
 
 pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 
@@ -35,19 +35,19 @@ class TrackFileResource(Resource):
 		id = xml.find("Id",ns).text
 		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
 		# BaseResource Optional
-		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
-		edit_rate = tuple([int(x) for x in xml.find("EditRate",ns).text]) if xml.find("EditorRate",ns) else None
-		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) else None
-		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) else None
-		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) else 0
+		annotation = xsd_optional_string(xml.find("Annotation",ns))
+		edit_rate = tuple([int(x) for x in xml.find("EditRate",ns).text.split(' ')]) if xml.find("EditRate",ns) is not None else None
+		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) is not None else None
+		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) is not None else None
+		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) is not None else 0
 
 		# TrackFileResource
 		source_encoding = xml.find("SourceEncoding",ns).text
 		track_file_id = xml.find("TrackFileId",ns).text
 		# TrackResource Optional
-		key_id = xml.find("KeyId",ns).text if xml.find("KeyId",ns) else None
-		hash = xml.find("Hash",ns).text if xml.find("Hash") else None
-		hash_algorithm = xml.find("HashAlgorithm",ns).text if xml.find("HashAlgorithm") else None
+		key_id = xsd_optional_string(xml.find("KeyId",ns))
+		hash = xsd_optional_string(xml.find("Hash",ns))
+		hash_algorithm = xsd_optional_string(xml.find("HashAlgorithm",ns))
 
 
 		return cls(id=id,
@@ -150,7 +150,7 @@ class Segment:
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
 
 		id = xml.find("Id",ns).text
-		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
+		annotation = xsd_optional_string(xml.find("Annotation",ns))
 
 		sequence_list = list()
 
@@ -220,7 +220,7 @@ class Locale:
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Locale":
 		"""Parse a LocaleType from a LocaleListType"""
-		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
+		annotation = xsd_optional_string(xml.find("Annotation",ns))
 		
 		languages = []
 		for lang_list in xml.findall("LanguageList",ns):
@@ -345,11 +345,11 @@ class Cpl:
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		title = xml.find("ContentTitle",ns).text
 
-		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) is not None else ""
-		issuer = xml.find("Issuer",ns).text if xml.find("Issuer",ns) is not None else ""
-		creator = xml.find("Creator",ns).text if xml.find("Creator",ns) is not None else ""
-		content_originator = xml.find("ContentOriginator",ns).text if xml.find("ContentOriginator",ns) is not None else ""
-		content_kind = xml.find("ContentKind",ns).text if xml.find("ContentKind",ns) is not None else ""
+		annotation = xsd_optional_string(xml.find("Annotation",ns))
+		issuer = xsd_optional_string(xml.find("Issuer",ns))
+		creator = xsd_optional_string(xml.find("Creator",ns))
+		content_originator = xsd_optional_string(xml.find("ContentOriginator",ns))
+		content_kind = xsd_optional_string(xml.find("ContentKind",ns))
 
 		# Rate and timecode
 		edit_rate = tuple(int(x) for x in xml.find("EditRate",ns).text.split(' '))
@@ -357,7 +357,7 @@ class Cpl:
 			else timecode.Timecode("00:00:00:00",float(edit_rate[0])/float(edit_rate[1]))
 
 		# Runtime is just hh:mm:ss and not to be trusted
-		runtime = xml.find("TotalRuntime",ns).text if xml.find("TotalRuntime",ns) is not None else ""
+		runtime = xsd_optional_string(xml.find("TotalRuntime",ns))
 		
 		# ContentVersionList
 		content_versions = list()
