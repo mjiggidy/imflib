@@ -1,145 +1,166 @@
-from xml.dom.minidom import Element
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime
 from posttools import timecode
-from . import pkl
 from imflib import xsd_datetime_to_datetime
 
-pat_nsextract = re.compile(r'^\{(.+)\}')
+pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Resource(abc.ABC):
 	"""A resource within a sequence"""
 
 	id:str
-	file_id:str
-	_edit_rate:typing.Tuple[int]
-	_start_frame:int
-	_duration:int
-	_asset:pkl.Asset
+	intrinsic_duration:int
 	
+	annotation:typing.Optional[str]
+	edit_rate:typing.Optional[tuple[int,int]]
+	entry_point:typing.Optional[int]
+	source_duration:typing.Optional[int]
+	repeat_count:typing.Optional[int]
+
+@dataclasses.dataclass(frozen=True)
+class TrackFileResource(Resource):
+	"""A file-based resource"""
+	source_encoding:str
+	track_file_id:str
+
+	key_id:typing.Optional[str]
+	hash:typing.Optional[str]
+	hash_algorithm:typing.Optional[str]
+
 	@classmethod
-	def fromXml(cls, resource, ns) -> "Resource":
-		id = resource.find("cpl:Id", ns).text
-		file_id = resource.find("cpl:TrackFileId", ns).text
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ImageResource":
 
-		res_edit_rate = resource.find("cpl:EditRate",ns)
-		# FIXME: Quick n dirty default values
-		edit_rate = tuple([int(x) for x in res_edit_rate.text.split(' ')]) if res_edit_rate is not None else (24000, 1001,)
-		
+		# BaseResource
+		id = xml.find("Id",ns).text
+		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
+		# BaseResource Optional
+		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
+		edit_rate = tuple([int(x) for x in xml.find("EditRate",ns).text]) if xml.find("EditorRate",ns) else None
+		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) else None
+		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) else None
+		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) else 0
 
-		start_frame = int(resource.find("cpl:EntryPoint", ns).text)
-		duration = int(resource.find("cpl:SourceDuration", ns).text)
-		
-		return cls(id, file_id, edit_rate, start_frame, duration, None)
+		# TrackFileResource
+		source_encoding = xml.find("SourceEncoding",ns).text
+		track_file_id = xml.find("TrackFileId",ns).text
+		# TrackResource Optional
+		key_id = xml.find("KeyId",ns).text if xml.find("KeyId",ns) else None
+		hash = xml.find("Hash",ns).text if xml.find("Hash") else None
+		hash_algorithm = xml.find("HashAlgorithm",ns).text if xml.find("HashAlgorithm") else None
 
-	@abc.abstractproperty
-	def edit_units(self) -> str:
-		"""Units used to express the edit rate"""
-	
-	@property
-	def edit_rate(self) -> float:
-		return self._edit_rate[0] / self._edit_rate[1]
-	
-	@property
-	def edit_rate_formatted(self) -> str:
-		"""Edit rate formatted nicely as a string"""
-		rate = int(self.edit_rate) if self.edit_rate.is_integer() else round(self.edit_rate, 2)
-		return f"{rate} {self.edit_units}"
-	
-	@property
-	def in_point(self) -> timecode.Timecode:
-		return timecode.Timecode(self._start_frame, self.edit_rate)
-	
-	@property
-	def out_point(self) -> timecode.Timecode:
-		return self.in_point + self.duration
 
-	@property
-	def duration(self) -> timecode.Timecode:
-		return timecode.Timecode(self._duration, self.edit_rate)
-	
-	@property
-	def file_asset(self) -> pkl.Asset:
-		"""Get the file asset associated with this resource"""
-		return self._asset or None
-	
-	def setAsset(self, asset:pkl.Asset):
-		"""Set the file asset associated with this resource"""
-		self._asset = asset
+		return cls(id=id,
+		intrinsic_duration=intrinsic_duration,
+		annotation=annotation,
+		edit_rate=edit_rate,
+		entry_point=entry_point,
+		source_duration=source_duration,
+		repeat_count=repeat_count,
+		source_encoding=source_encoding,
+		track_file_id=track_file_id,
+		key_id=key_id,
+		hash=hash,
+		hash_algorithm=hash_algorithm)
 
-class ImageResource(Resource):
+@dataclasses.dataclass(frozen=True)
+class ImageResource(TrackFileResource):
 	"""A main image resource"""
 
-	@property
-	def edit_units(self) -> str:
-		return "fps"
-	
+	edit_units:str = "fps"
 
-class AudioResource(Resource):
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "ImageResource":
+		res = super().fromXml(xml,ns)
+		# I am surprised this just works
+		return res
+	
+@dataclasses.dataclass(frozen=True)
+class AudioResource(TrackFileResource):
 	"""A main audio resource"""
 
-	@property
-	def edit_units(self) -> str:
-		return "Hz"
+	edit_units:str = "Hz"
 
-@dataclasses.dataclass
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "AudioResource":
+		res = super().fromXml(xml,ns)
+		return res
+
+
+@dataclasses.dataclass(frozen=True)
 class Sequence:
 	"""A sequence within a segment"""
 	id:str
+	track_id:str
 	resources:typing.List[Resource]
 
 	@classmethod
-	def fromXml(cls, sequence, ns) -> "Sequence":
-		id = sequence.find("cpl:Id",ns).text
-		resources = list()
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "Sequence":
+		"""Parse from XML"""
 
-		seq = cls(id, resources)
-
-		for resource in sequence.find("cpl:ResourceList",ns):
-			if isinstance(seq, MainImageSequence):
-				resources.append(ImageResource.fromXml(resource, ns))
-			elif isinstance(seq, MainAudioSequence):
-				resources.append(AudioResource.fromXml(resource, ns))
-
-		return cls(id, resources)
+		if xml.tag.endswith("MainImageSequence"):
+			return MainImageSequence.fromXml(xml, ns)
+		
+		elif xml.tag.endswith("MainAudioSequence"):
+			return MainAudioSequence.fromXml(xml, ns)
+		
+		# TODO: Implement additional
+		else:
+			raise Exception(f"Nope. {xml.tag}")
 
 class MainImageSequence(Sequence):
-	"""Main image sequence of a segment"""
+	"""An XSD MainImageSequenceType from IMF Core Constraints"""
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
+		"""Parse from XML"""
+		
+		id = xml.find("Id",ns).text
+		track_id = xml.find("TrackId",ns).text
+		
+		resource_list = list()
+		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
+			resource_list.append(ImageResource.fromXml(resource, ns))
+
+		return cls(id=id, track_id=track_id, resources=resource_list)
 
 class MainAudioSequence(Sequence):
 	"""Main audio sequence of a segment"""
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
+		"""Parse from XML"""
+		id = xml.find("Id",ns).text
+		track_id = xml.find("TrackId",ns).text
+		
+		resource_list = list()
+		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
+			print(resource.tag)
+			resource_list.append(AudioResource.fromXml(resource, ns))
 
+		return cls(id=id, track_id=track_id, resources=resource_list)
 
 @dataclasses.dataclass(frozen=True)
 class Segment:
 	"""A CPL segment"""
 	id:str
 	sequences:typing.List[Sequence]
-	annotation_text:typing.Optional[str]=""
+	annotation:typing.Optional[str]=""
 
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
 
 		id = xml.find("Id",ns).text
-		annotation_text = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
+		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
 
 		sequence_list = list()
 
 		for sequence in xml.find("SequenceList", ns):
+			sequence_list.append(Sequence.fromXml(sequence,ns))
 
-			continue
-
-			if "MainImageSequence" in sequence.tag:
-				sequence_list.append(MainImageSequence.fromXml(sequence, ns))
-		
-			elif "MainAudioSequence" in sequence.tag:
-				sequence_list.append(MainAudioSequence.fromXml(sequence, ns))
-			
 		return cls(
 			id=id,
 			sequences=sequence_list,
-			annotation_text=annotation_text
+			annotation=annotation
 		)
 	
 	@property
@@ -191,7 +212,7 @@ class ContentMaturityRating:
 class Locale:
 	"""Localization info"""
 
-	annotation_text:typing.Optional[str]=None
+	annotation:typing.Optional[str]=None
 	languages:typing.Optional[list[str]]=None
 	regions:typing.Optional[list[str]]=None
 	content_maturity_ratings:typing.Optional[list[ContentMaturityRating]]=None
@@ -199,7 +220,7 @@ class Locale:
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Locale":
 		"""Parse a LocaleType from a LocaleListType"""
-		annotation_text = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
+		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) else ""
 		
 		languages = []
 		for lang_list in xml.findall("LanguageList",ns):
@@ -216,7 +237,7 @@ class Locale:
 			for rating in r_list.findall("ContentMaturityRating",ns):
 				ratings.append(ContentMaturityRating.fromXml(rating, ns))
 			
-		return cls(annotation_text, languages, regions, ratings)
+		return cls(annotation, languages, regions, ratings)
 		
 
 
@@ -286,7 +307,7 @@ class Cpl:
 	edit_rate:tuple[int,int]
 	segments:list["Segment"]
 	
-	annotation_text:str=""
+	annotation:str=""
 	issuer:str=""
 	creator:str=""
 	content_originator:str=""
@@ -324,7 +345,7 @@ class Cpl:
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		title = xml.find("ContentTitle",ns).text
 
-		annotation_text = xml.find("Annotation",ns).text if xml.find("Annotation",ns) is not None else ""
+		annotation = xml.find("Annotation",ns).text if xml.find("Annotation",ns) is not None else ""
 		issuer = xml.find("Issuer",ns).text if xml.find("Issuer",ns) is not None else ""
 		creator = xml.find("Creator",ns).text if xml.find("Creator",ns) is not None else ""
 		content_originator = xml.find("ContentOriginator",ns).text if xml.find("ContentOriginator",ns) is not None else ""
@@ -385,7 +406,7 @@ class Cpl:
 			title=title,
 			edit_rate=edit_rate,
 			segments=segment_list,
-			annotation_text=annotation_text,
+			annotation=annotation,
 			issuer=issuer,
 			creator=creator,
 			content_originator=content_originator,
