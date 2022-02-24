@@ -134,7 +134,6 @@ class MainAudioSequence(Sequence):
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
-			print(resource.tag)
 			resource_list.append(AudioResource.fromXml(resource, ns))
 
 		return cls(id=id, track_id=track_id, resources=resource_list)
@@ -411,35 +410,27 @@ class Cpl:
 			creator=creator,
 			content_originator=content_originator,
 			content_kind=content_kind,
-
 			tc_start=tc_start,
 			runtime=runtime,
-
 			content_versions=content_versions,
 			locales=locale_list,
 			extension_properties=extensions_list,
-
 			signer=signer,
 			signature=signature
 		)
+	
+	@property
+	def sequences(self) -> typing.Iterator["Sequence"]:
+		for seg in self.segments:
+			for seq in seg.sequences:
+				yield seq
+	
+	@property
+	def resources(self) -> typing.Iterator["Resource"]:
+		for seq in self.sequences:
+			for res in seq.resources:
+				yield res
 
-
-		for segment in root.find("cpl:SegmentList", cpl.namespaces):
-			seg = Segment.fromXmlSegment(segment, cpl.namespaces)
-			cpl.addSegement(seg)
-
-		return cpl		
-#
-#	@property
-#	def namespaces(self) -> dict:
-#		"""Known namespaces in the CPL"""
-#		return self._namespaces
-#
-#	@property
-#	def title(self) -> str:
-#		"""Title of the CPL"""
-#		return self._title
-#	
 #	@property
 #	def edit_rate(self) -> float:
 #		"""Calculate the edit rate"""
