@@ -13,7 +13,7 @@ class Resource(abc.ABC):
 	intrinsic_duration:int
 	
 	annotation:typing.Optional[str]
-	edit_rate:typing.Optional[tuple[int,int]]
+	edit_rate:"EditRate"
 	entry_point:typing.Optional[int]
 	source_duration:typing.Optional[int]
 	repeat_count:typing.Optional[int]
@@ -36,7 +36,7 @@ class TrackFileResource(Resource):
 		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
 		# BaseResource Optional
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
-		edit_rate = tuple([int(x) for x in xml.find("EditRate",ns).text.split(' ')]) if xml.find("EditRate",ns) is not None else None
+		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
 		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) is not None else None
 		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) is not None else None
 		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) is not None else 0
@@ -295,6 +295,29 @@ class Signature:
 		except Exception as e:
 			raw_xml = f"Unknown signature type: {e}"
 		return cls(raw_xml)
+
+@dataclasses.dataclass(frozen=True)
+class EditRate:
+	"""A rational edit rate"""
+	
+	edit_rate:tuple[int,int]
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "EditRate":
+		"""Parse EditRateType from XML"""
+		return cls(tuple(int(x) for x in xml.text.split(' ')))
+	
+	@property
+	def decimal(self) -> float:
+		"""Edit rate as a float"""
+		return float(self.edit_rate[0]) / float(self.edit_rate[1])
+
+	def __float__(self) -> float:
+		return self.decimal
+	
+	def __str__(self) -> str:
+		return str(round(self.decimal)) if self.decimal.is_integer() else str(round(self.decimal,2))
+		
 		
 @dataclasses.dataclass(frozen=True)
 class Cpl:
@@ -303,8 +326,8 @@ class Cpl:
 	id:str
 	issue_date:datetime.datetime
 	title:str
-	edit_rate:tuple[int,int]
-	segments:list["Segment"]
+	edit_rate:EditRate
+	_segments:list["Segment"]
 	
 	annotation:str=""
 	issuer:str=""
@@ -351,9 +374,9 @@ class Cpl:
 		content_kind = xsd_optional_string(xml.find("ContentKind",ns))
 
 		# Rate and timecode
-		edit_rate = tuple(int(x) for x in xml.find("EditRate",ns).text.split(' '))
+		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns)
 		tc_start = cls.timecode_from_composition(xml.find("CompositionTimecode",ns),ns) if xml.find("CompositionTimecode",ns) is not None \
-			else timecode.Timecode("00:00:00:00",float(edit_rate[0])/float(edit_rate[1]))
+			else timecode.Timecode("00:00:00:00",float(edit_rate))
 
 		# Runtime is just hh:mm:ss and not to be trusted
 		runtime = xsd_optional_string(xml.find("TotalRuntime",ns))
@@ -404,7 +427,7 @@ class Cpl:
 			issue_date=issue_date,
 			title=title,
 			edit_rate=edit_rate,
-			segments=segment_list,
+			_segments=segment_list,
 			annotation=annotation,
 			issuer=issuer,
 			creator=creator,
@@ -420,6 +443,10 @@ class Cpl:
 		)
 	
 	@property
+	def segments(self) -> typing.Iterator["Segment"]:
+		return iter(self._segments)
+	
+	@property
 	def sequences(self) -> typing.Iterator["Sequence"]:
 		for seg in self.segments:
 			for seq in seg.sequences:
@@ -430,47 +457,3 @@ class Cpl:
 		for seq in self.sequences:
 			for res in seq.resources:
 				yield res
-
-#	@property
-#	def edit_rate(self) -> float:
-#		"""Calculate the edit rate"""
-#		return self._editrate[0] / self._editrate[1]
-#	
-#	@property
-#	def tc_start(self) -> timecode.Timecode:
-#		"""The start timecode of the CPL"""
-#		return self._tc_start
-#
-#	@property
-#	def segments(self) -> typing.List[Segment]:
-#		return self._segments
-#	
-#	@property
-#	def resources(self) -> typing.List[Resource]:
-#		reslist = list()
-#		for seg in self.segments:
-#			reslist.extend(seg.resources)
-#		return reslist
-#	
-#	def addNamespace(self, name:str, uri:str):
-#		"""Add a known namespace to the zeitgeist"""
-#		if name in self._namespaces:
-#			raise KeyError(f"Namespace {name} already exists as {self._namespaces.get('name')}")	
-#		self._namespaces.update({name: uri})
-#	
-#	def setTitle(self, title:str):
-#		"""Set the title of the CPL"""
-#		self._title = title
-#	
-#	def setEditRate(self, numerator:int, denominator:int):
-#		"""Set the CPL edit rate"""
-#		self._editrate = (numerator, denominator)
-#	
-#	def setStartTimecode(self, tc_start:timecode.Timecode):
-#		"""Set the CPL start timecode"""
-#		self._tc_start = tc_start
-#	
-#	def addSegement(self, segment:Segment):
-#		"""Add a segment to the CPL"""
-#		self._segments.append(segment)
-#
