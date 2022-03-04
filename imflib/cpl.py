@@ -18,6 +18,11 @@ class Resource(abc.ABC):
 	source_duration:typing.Optional[int]
 	repeat_count:typing.Optional[int]
 
+	@property
+	def duration(self) -> int:
+		"""Duration in frames for now"""
+		return self.source_duration  + (self.source_duration * self.repeat_count)
+
 @dataclasses.dataclass(frozen=True)
 class TrackFileResource(Resource):
 	"""A file-based resource"""
@@ -86,13 +91,52 @@ class AudioResource(TrackFileResource):
 		res = super().fromXml(xml,ns)
 		return res
 
+# TODO: Markers are untested (no samples available)
+@dataclasses.dataclass(frozen=True)
+class MarkerResource(Resource):
+	"""A CPL Marker"""
+
+	label:str
+	scope:str
+	offset:int
+
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerResource":
+		
+		# BaseResource
+		id = xml.find("Id",ns).text
+		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
+		# BaseResource Optional
+		annotation = xsd_optional_string(xml.find("Annotation",ns))
+		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
+		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) is not None else None
+		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) is not None else None
+		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) is not None else 0
+
+		label = xml.find("Label",ns).text
+		scope = xsd_optional_string(xml.find("Label",ns).attrib("scope"), "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers")
+		offset = int(xml.find("Offset",ns).text)
+
+		return cls(
+			id=id,
+			intrinsic_duration=intrinsic_duration,
+			annotation=annotation,
+			edit_rate=edit_rate,
+			entry_point=entry_point,
+			source_duration=source_duration,
+			repeat_count=repeat_count,
+			label=label,
+			scope=scope,
+			offset=offset
+		)
+
 
 @dataclasses.dataclass(frozen=True)
 class Sequence:
 	"""A sequence within a segment"""
 	id:str
 	track_id:str
-	resources:typing.List[Resource]
+	_resources:typing.List[Resource]
 
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "Sequence":
@@ -104,9 +148,23 @@ class Sequence:
 		elif xml.tag.endswith("MainAudioSequence"):
 			return MainAudioSequence.fromXml(xml, ns)
 		
+		elif xml.tag.endswith("MarkerSequence"):
+			return MarkerSequence.fromXml(xml, ns)
+		
 		# TODO: Implement additional
 		else:
 			raise Exception(f"Nope. {xml.tag}")
+	
+	@property
+	def resources(self) -> typing.Iterator[Resource]:
+		return iter(self._resources)
+	
+	@property
+	def duration(self) -> int:
+		"""Duration in frames for now"""
+		# The timeline of a Sequence shall consist of the concatenation, without gaps, of the timeline of all its Resources in the order they appear in the ResourceList element
+		return sum(res.duration for res in self.resources)
+
 
 class MainImageSequence(Sequence):
 	"""An XSD MainImageSequenceType from IMF Core Constraints"""
@@ -122,7 +180,7 @@ class MainImageSequence(Sequence):
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
 			resource_list.append(ImageResource.fromXml(resource, ns))
 
-		return cls(id=id, track_id=track_id, resources=resource_list)
+		return cls(id=id, track_id=track_id, _resources=resource_list)
 
 class MainAudioSequence(Sequence):
 	"""Main audio sequence of a segment"""
@@ -136,13 +194,28 @@ class MainAudioSequence(Sequence):
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
 			resource_list.append(AudioResource.fromXml(resource, ns))
 
-		return cls(id=id, track_id=track_id, resources=resource_list)
+		return cls(id=id, track_id=track_id, _resources=resource_list)
+
+# TODO: MarkerSequence is untested
+class MarkerSequence(Sequence):
+	"""Marker sequence"""
+	@classmethod
+	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
+		"""Parse from """
+		id = xml.find("Id",ns).text
+		track_id = xml.find("TrackId",ns).text
+		
+		resource_list = list()
+		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
+			resource_list.append(MarkerResource.fromXml(resource, ns))
+
+		return cls(id=id, track_id=track_id, _resources=resource_list)
 
 @dataclasses.dataclass(frozen=True)
 class Segment:
 	"""A CPL segment"""
 	id:str
-	sequences:typing.List[Sequence]
+	_sequences:typing.List[Sequence]
 	annotation:typing.Optional[str]=""
 
 	@classmethod
@@ -158,7 +231,7 @@ class Segment:
 
 		return cls(
 			id=id,
-			sequences=sequence_list,
+			_sequences=sequence_list,
 			annotation=annotation
 		)
 	
@@ -168,6 +241,16 @@ class Segment:
 		for seq in self.sequences:
 			reslist.extend(seq.resources)
 		return reslist
+	
+	@property
+	def sequences(self) -> typing.Iterable["Sequence"]:
+		return iter(self._sequences)
+	
+	@property
+	def duration(self) -> int:
+		"""Duration in frames for now"""
+		#The duration of the Segment shall be equal to the duration of its Sequences and all Sequences within Segment shall have the same duration.
+		return self._sequences[0].duration if self._sequences else 0
 
 @dataclasses.dataclass(frozen=True)
 class ContentVersion:
@@ -414,8 +497,8 @@ class Cpl:
 			signature=None
 		
 		# TODO: Signer and signature must be either both present, or both omitted
-		# TODO: Do a check real good ok
-		
+		# TODO: Do a check real good
+
 		# Segments!
 		segment_list = list()
 		for segment in xml.find("SegmentList",ns):
@@ -457,3 +540,16 @@ class Cpl:
 		for seq in self.sequences:
 			for res in seq.resources:
 				yield res
+	
+	@property
+	def duration(self) -> int:
+		"""Duration in frames for now"""
+		return sum(seg.duration for seg in self.segments)
+	
+	@property
+	def timecode_range(self) -> timecode.TimecodeRange:
+		"""Timecode range of the CPL"""
+		return timecode.TimecodeRange(
+			start    = self.tc_start,
+			duration = timecode.Timecode(self.duration, float(self.edit_rate))
+		)
