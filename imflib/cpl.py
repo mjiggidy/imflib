@@ -7,21 +7,46 @@ pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 
 @dataclasses.dataclass(frozen=True)
 class Resource(abc.ABC):
-	"""A resource within a sequence"""
+	"""A BaseResource XSD within a sequence"""
 
 	id:str
 	intrinsic_duration:int
 	
 	annotation:typing.Optional[str]
-	edit_rate:"EditRate"
+	edit_rate:typing.Optional["EditRate"]
 	entry_point:typing.Optional[int]
 	source_duration:typing.Optional[int]
 	repeat_count:typing.Optional[int]
+
+	# References
+	_src_sequence:typing.Optional["Sequence"]
+	_src_offset:int
 
 	@property
 	def duration(self) -> int:
 		"""Duration in frames for now"""
 		return self.source_duration  + (self.source_duration * self.repeat_count)
+	
+	@property
+	def edit_range(self) -> timecode.TimecodeRange:
+		"""In/out point of subclip"""
+		rate = float(self.edit_rate or self._src_sequence._src_segment._src_cpl.edit_rate)
+		tc_start = timecode.Timecode(self.entry_point, rate)
+		duration = timecode.Timecode(self.source_duration, rate)
+		return timecode.TimecodeRange(
+			start=tc_start,
+			duration=duration
+		)
+
+	@property
+	def timecode_range(self) -> timecode.TimecodeRange:
+		"""Timecode range relative to CPL"""
+		tc_start = self._src_sequence.timecode_range.start + self._src_offset
+		tc_duration = timecode.Timecode(self.duration, float(self.edit_rate or tc_start.rate)).resample(tc_start.rate)
+		return timecode.TimecodeRange(
+			start    = tc_start,
+			duration = tc_duration
+		)
 
 @dataclasses.dataclass(frozen=True)
 class TrackFileResource(Resource):
@@ -66,7 +91,9 @@ class TrackFileResource(Resource):
 		track_file_id=track_file_id,
 		key_id=key_id,
 		hash=hash,
-		hash_algorithm=hash_algorithm)
+		hash_algorithm=hash_algorithm,
+		_src_sequence=None,
+		_src_offset=0)
 
 @dataclasses.dataclass(frozen=True)
 class ImageResource(TrackFileResource):
@@ -127,7 +154,9 @@ class MarkerResource(Resource):
 			repeat_count=repeat_count,
 			label=label,
 			scope=scope,
-			offset=offset
+			offset=offset,
+			_src_sequence=None,
+			_src_offset=0
 		)
 
 
@@ -137,6 +166,10 @@ class Sequence:
 	id:str
 	track_id:str
 	_resources:typing.List[Resource]
+
+	# References
+	_src_segment:typing.Optional["Segment"]=None
+	_src_offset:int=0
 
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "Sequence":
@@ -153,17 +186,34 @@ class Sequence:
 		
 		# TODO: Implement additional
 		else:
-			raise Exception(f"Nope. {xml.tag}")
+			raise NotImplementedError(f"Unknown/unsupported/scary sequence type: {xml.tag}")
 	
 	@property
-	def resources(self) -> typing.Iterator[Resource]:
-		return iter(self._resources)
+	def resources(self) -> typing.Iterator["Resource"]:
+		rel_offset = 0
+		for res in self._resources:
+			yield dataclasses.replace(
+				res,
+				_src_sequence = self,
+				_src_offset   = rel_offset
+			)
+			rel_offset += res.duration
 	
 	@property
 	def duration(self) -> int:
 		"""Duration in frames for now"""
 		# The timeline of a Sequence shall consist of the concatenation, without gaps, of the timeline of all its Resources in the order they appear in the ResourceList element
 		return sum(res.duration for res in self.resources)
+
+	@property
+	def timecode_range(self) -> timecode.TimecodeRange:
+		"""Timecode range relative to CPL"""
+		tc_start = self._src_segment.timecode_range.start
+		tc_duration = timecode.Timecode(self.duration, tc_start.rate, tc_start.mode)
+		return timecode.TimecodeRange(
+			start    = tc_start,
+			duration = tc_duration
+		)
 
 
 class MainImageSequence(Sequence):
@@ -216,7 +266,11 @@ class Segment:
 	"""A CPL segment"""
 	id:str
 	_sequences:typing.List[Sequence]
-	annotation:typing.Optional[str]=""
+	annotation:str=""
+
+	# References
+	_src_cpl:typing.Optional["Cpl"]=None
+	_src_offset:int=0
 
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
@@ -244,13 +298,32 @@ class Segment:
 	
 	@property
 	def sequences(self) -> typing.Iterable["Sequence"]:
-		return iter(self._sequences)
+		rel_offset = 0
+		for seq in self._sequences:
+			yield dataclasses.replace(
+				seq,
+				_src_segment = self,
+				_src_offset  = rel_offset
+			)
+			rel_offset += seq.duration
 	
 	@property
 	def duration(self) -> int:
 		"""Duration in frames for now"""
 		#The duration of the Segment shall be equal to the duration of its Sequences and all Sequences within Segment shall have the same duration.
 		return self._sequences[0].duration if self._sequences else 0
+	
+	@property
+	def timecode_range(self) -> timecode.TimecodeRange:
+		"""Timecode range relative to CPL"""
+		tc_start = self._src_cpl.timecode_range.start + self._src_offset
+		tc_duration = timecode.Timecode(self.duration, tc_start.rate, tc_start.mode)
+		return timecode.TimecodeRange(
+			start    = tc_start,
+			duration = tc_duration
+		)
+
+
 
 @dataclasses.dataclass(frozen=True)
 class ContentVersion:
@@ -527,7 +600,14 @@ class Cpl:
 	
 	@property
 	def segments(self) -> typing.Iterator["Segment"]:
-		return iter(self._segments)
+		for seg in self._segments:
+			rel_offset = 0
+			yield dataclasses.replace(
+				seg,
+				_src_cpl    =self,
+				_src_offset = rel_offset
+			)
+			rel_offset += seg.duration
 	
 	@property
 	def sequences(self) -> typing.Iterator["Sequence"]:
