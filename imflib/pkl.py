@@ -1,7 +1,7 @@
 import datetime
 import xml.etree.ElementTree as et
 import dataclasses, typing
-from imflib import xsd_datetime_to_datetime
+from imflib import xsd_datetime_to_datetime, xsd_optional_string
 
 @dataclasses.dataclass()
 class Asset:
@@ -19,15 +19,25 @@ class Asset:
 		"""Create an asset from an XML element"""
 
 		assets = []
+
 		for asset in xml.findall("Asset",ns):
 			id = asset.find("Id", ns).text
 			hash = asset.find("Hash", ns).text
 			hash_type = asset.find("HashAlgorithm", ns).attrib.get("Algorithm").split("#")[-1] # TODO: Only SHA-1 is currently supported. Maybe hard-code this?
 			size = int(asset.find("Size", ns).text)
 			type = asset.find("Type", ns).text
-			file_name = asset.find("OriginalFileName", ns).text if asset.find("OriginalFileName", ns) is not None else ""
-			annotation_text = asset.find("AnnotationText", ns).text if asset.find("AnnotationText", ns) is not None else ""
-			assets.append(cls(id, hash, hash_type, size, type, file_name, annotation_text))
+			file_name = xsd_optional_string(asset.find("OriginalFileName", ns))
+			annotation_text = xsd_optional_string(asset.find("AnnotationText", ns))
+			assets.append(cls(
+				id,
+				hash,
+				hash_type,
+				size,
+				type,
+				file_name,
+				annotation_text
+			))
+
 		return assets
 
 @dataclasses.dataclass(frozen=True)
@@ -59,11 +69,20 @@ class Pkl:
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		assets = Asset.fromXml(xml.find("AssetList",ns),ns)
 
-		annotation_text = xml.find("AnnotationText", ns).text if xml.find("AnnotationText", ns) is not None else ""
-		group_id = xml.find("GroupId", ns).text if xml.find("GroupId", ns) is not None else ""
-		icon_id = xml.find("IconId", ns).text if xml.find("IconId", ns) is not None else ""
+		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
+		group_id = xsd_optional_string(xml.find("GroupId", ns))
+		icon_id = xsd_optional_string(xml.find("IconId", ns))
 
-		return cls(id, issuer, creator, issue_date, assets, annotation_text,group_id,icon_id)
+		return cls(
+			id,
+			issuer,
+			creator,
+			issue_date,
+			assets,
+			annotation_text,
+			group_id,
+			icon_id
+		)
 	
 	def getAsset(self, id:str) -> "Asset":
 		"""Get an Asset from the PKL based on the URN ID"""
