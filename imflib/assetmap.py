@@ -1,6 +1,6 @@
 import dataclasses, typing, datetime, re
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_integer
 
 @dataclasses.dataclass(frozen=True)
 class AssetMap:
@@ -23,14 +23,22 @@ class AssetMap:
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"AssetMap":
 		"""Parse the AssetMap from XML"""
 		id = xml.find("Id",ns).text
-		annotation_text = xml.find("AnnotationText",ns).text if xml.find("AnnotationText",ns) is not None else ""	# None instead of empty string...?
+		annotation_text = xsd_optional_string(xml.find("AnnotationText",ns))
 		creator = xml.find("Creator",ns).text
 		volume_count = int(xml.find("VolumeCount",ns).text)
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		issuer = xml.find("Issuer",ns).text
 		assets = Asset.fromXml(xml.find("AssetList",ns), ns)
 
-		return cls(id, annotation_text, creator, volume_count,issue_date, issuer, assets)
+		return cls(
+			id,
+			annotation_text,
+			creator,
+			volume_count,
+			issue_date,
+			issuer,
+			assets
+		)
 	
 	@property
 	def packing_lists(self)->list["Asset"]:
@@ -92,8 +100,15 @@ class Chunk:
 		chunks = []
 		for chunk in xml.findall("Chunk",ns):
 			path = chunk.find("Path",ns).text
-			volume_index = int(chunk.find("VolumeIndex",ns).text) if chunk.find("VolumeIndex",ns) is not None else 1
-			offset = int(chunk.find("Offset",ns).text) if chunk.find("Offset",ns) is not None else 0
-			size = int(chunk.find("Length",ns).text) if chunk.find("Length",ns) is not None else 0
-			chunks.append(cls(path, volume_index, offset, size))
+			volume_index = xsd_optional_integer(chunk.find("VolumeIndex",ns), 1)
+			offset = xsd_optional_integer(chunk.find("Offset",ns),0)
+			size = xsd_optional_integer(chunk.find("Length",ns), 0)
+			
+			chunks.append(cls(
+				path,
+				volume_index,
+				offset,
+				size
+			))
+		
 		return chunks

@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime
 from posttools import timecode
-from imflib import xsd_datetime_to_datetime, xsd_optional_string
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_integer
 
 pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 
@@ -64,36 +64,40 @@ class TrackFileResource(Resource):
 		# BaseResource
 		id = xml.find("Id",ns).text
 		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
+		
 		# BaseResource Optional
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
 		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
-		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) is not None else None
-		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) is not None else None
-		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) is not None else 0
+		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns))
+		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
+		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 0)
 
 		# TrackFileResource
 		source_encoding = xml.find("SourceEncoding",ns).text
 		track_file_id = xml.find("TrackFileId",ns).text
+		
 		# TrackResource Optional
 		key_id = xsd_optional_string(xml.find("KeyId",ns))
 		hash = xsd_optional_string(xml.find("Hash",ns))
 		hash_algorithm = xsd_optional_string(xml.find("HashAlgorithm",ns))
 
 
-		return cls(id=id,
-		intrinsic_duration=intrinsic_duration,
-		annotation=annotation,
-		edit_rate=edit_rate,
-		entry_point=entry_point,
-		source_duration=source_duration,
-		repeat_count=repeat_count,
-		source_encoding=source_encoding,
-		track_file_id=track_file_id,
-		key_id=key_id,
-		hash=hash,
-		hash_algorithm=hash_algorithm,
-		_src_sequence=None,
-		_src_offset=0)
+		return cls(
+			id=id,
+			intrinsic_duration=intrinsic_duration,
+			annotation=annotation,
+			edit_rate=edit_rate,
+			entry_point=entry_point,
+			source_duration=source_duration,
+			repeat_count=repeat_count,
+			source_encoding=source_encoding,
+			track_file_id=track_file_id,
+			key_id=key_id,
+			hash=hash,
+			hash_algorithm=hash_algorithm,
+			_src_sequence=None,
+			_src_offset=0
+		)
 
 @dataclasses.dataclass(frozen=True)
 class ImageResource(TrackFileResource):
@@ -133,12 +137,13 @@ class MarkerResource(Resource):
 		# BaseResource
 		id = xml.find("Id",ns).text
 		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
+
 		# BaseResource Optional
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
 		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
-		entry_point = int(xml.find("EntryPoint",ns).text) if xml.find("EntryPoint",ns) is not None else None
-		source_duration = int(xml.find("SourceDuration",ns).text) if xml.find("SourceDuration",ns) is not None else None
-		repeat_count = int(xml.find("RepeatCount",ns).text) if xml.find("RepeatCount",ns) is not None else 0
+		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns))
+		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
+		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 0)
 
 		label = xml.find("Label",ns).text
 		scope = xsd_optional_string(xml.find("Label",ns).attrib("scope"), "http://www.smpte-ra.org/schemas/2067-3/2013#standard-markers")
@@ -512,12 +517,16 @@ class Cpl:
 	
 	@classmethod
 	def fromFile(cls, path:str) -> "Cpl":
-		"""Parse an existing CPL"""
+		"""Parse an existing CPL from a given file path."""
 		file_cpl = et.parse(path)
 		return cls.fromXml(file_cpl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-3/2016"})
 	
 	@classmethod
 	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Cpl":
+		"""
+		Parse an existing CPL from a given root XMLElementTree Element
+		Intended to be called from Cpl.fromFile(), but you do you.
+		"""
 		
 		id = xml.find("Id",ns).text
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
