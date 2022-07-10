@@ -15,7 +15,7 @@ class Asset:
 	annotation_text:str=""
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:dict) -> list["Asset"]:
+	def from_xml(cls, xml:et.Element, ns:dict) -> list["Asset"]:
 		"""Create an asset from an XML element"""
 
 		assets = []
@@ -53,21 +53,21 @@ class Pkl:
 	icon_id:str=""
 
 	@classmethod
-	def fromFile(cls, path:str) -> "Pkl":
+	def from_file(cls, path:str) -> "Pkl":
 		"""Parse an existing PKL"""
 
 		file_pkl = et.parse(path)
-		return cls.fromXml(file_pkl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-2/2016/PKL"})
+		return cls.from_xml(file_pkl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-2/2016/PKL"})
 	
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Pkl":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Pkl":
 		"""Parse a PKL from XML"""
 
 		id = xml.find("Id", ns).text
 		issuer = xml.find("Issuer", ns).text
 		creator = xml.find("Creator", ns).text
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
-		assets = Asset.fromXml(xml.find("AssetList",ns),ns)
+		assets = Asset.from_xml(xml.find("AssetList",ns),ns)
 
 		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
 		group_id = xsd_optional_string(xml.find("GroupId", ns))
@@ -84,7 +84,7 @@ class Pkl:
 			icon_id
 		)
 	
-	def getAsset(self, id:str) -> "Asset":
+	def get_asset(self, id:str) -> "Asset":
 		"""Get an Asset from the PKL based on the URN ID"""
 		for asset in self.assets:
 			if asset.id == id: return asset		

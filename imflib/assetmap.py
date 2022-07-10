@@ -14,13 +14,13 @@ class AssetMap:
 	assets:list["Asset"]
 
 	@classmethod
-	def fromFile(cls, path:str)->"AssetMap":
+	def from_file(cls, path:str)->"AssetMap":
 		"""Parse an existing AssetMap file"""
 		file_am = et.parse(path)
-		return cls.fromXml(file_am.getroot(),{"":"http://www.smpte-ra.org/schemas/429-9/2007/AM"})
+		return cls.from_xml(file_am.getroot(),{"":"http://www.smpte-ra.org/schemas/429-9/2007/AM"})
 	
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"AssetMap":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"AssetMap":
 		"""Parse the AssetMap from XML"""
 		id = xml.find("Id",ns).text
 		annotation_text = xsd_optional_string(xml.find("AnnotationText",ns))
@@ -28,7 +28,7 @@ class AssetMap:
 		volume_count = int(xml.find("VolumeCount",ns).text)
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		issuer = xml.find("Issuer",ns).text
-		assets = Asset.fromXml(xml.find("AssetList",ns), ns)
+		assets = Asset.from_xml(xml.find("AssetList",ns), ns)
 
 		return cls(
 			id,
@@ -50,7 +50,7 @@ class AssetMap:
 		"""Total size of the assets in this map"""
 		return sum(asset.size for asset in self.assets)
 
-	def getAsset(self, id:str) -> "Asset":
+	def get_asset(self, id:str) -> "Asset":
 		"""Get an Asset from the AssetMap based on the URN ID"""
 		for asset in self.assets:
 			if asset.id == id: return asset		
@@ -66,13 +66,13 @@ class Asset:
 	chunks:list["Chunk"]
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->list["Asset"]:
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->list["Asset"]:
 		"""Parse an Asset from an AssetList XML Element"""
 		assets = []
 		for asset in xml.findall("Asset",ns):
 			id = asset.find("Id",ns).text
 			is_packing_list = (asset.find("PackingList",ns) is not None) and (asset.find("PackingList",ns).text.lower() == "true")
-			chunks = Chunk.fromXml(asset.find("ChunkList",ns),ns)
+			chunks = Chunk.from_xml(asset.find("ChunkList",ns),ns)
 			assets.append(cls(id, is_packing_list, chunks))
 		return assets
 	
@@ -95,7 +95,7 @@ class Chunk:
 	size:int
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Chunk":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Chunk":
 		"""Parse a chunk of an Asset from a ChunkList"""
 		chunks = []
 		for chunk in xml.findall("Chunk",ns):

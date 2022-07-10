@@ -7,7 +7,7 @@ if len(sys.argv) < 2:
 
 for path_imf in sys.argv[1:]:
 	for path_cpl in pathlib.Path(path_imf).glob("CPL_*.xml"):
-		imf_cpl = cpl.Cpl.fromFile(path_cpl)
+		imf_cpl = cpl.Cpl.from_file(path_cpl)
 		print(f"{path_cpl}")
 		print(f"CPL Name: {imf_cpl.title}")
 		if imf_cpl.annotation: print(imf_cpl.annotation)

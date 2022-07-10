@@ -59,7 +59,7 @@ class TrackFileResource(Resource):
 	hash_algorithm:typing.Optional[str]
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ImageResource":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ImageResource":
 
 		# BaseResource
 		id = xml.find("Id",ns).text
@@ -67,7 +67,7 @@ class TrackFileResource(Resource):
 		
 		# BaseResource Optional
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
-		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
+		edit_rate = EditRate.from_xml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
 		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns))
 		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
 		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 0)
@@ -106,8 +106,8 @@ class ImageResource(TrackFileResource):
 	edit_units:str = "fps"
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "ImageResource":
-		res = super().fromXml(xml,ns)
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "ImageResource":
+		res = super().from_xml(xml,ns)
 		# I am surprised this just works
 		return res
 	
@@ -118,8 +118,8 @@ class AudioResource(TrackFileResource):
 	edit_units:str = "Hz"
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "AudioResource":
-		res = super().fromXml(xml,ns)
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "AudioResource":
+		res = super().from_xml(xml,ns)
 		return res
 
 # TODO: Markers are untested (no samples available)
@@ -132,7 +132,7 @@ class MarkerResource(Resource):
 	offset:int
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerResource":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerResource":
 		
 		# BaseResource
 		id = xml.find("Id",ns).text
@@ -140,7 +140,7 @@ class MarkerResource(Resource):
 
 		# BaseResource Optional
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
-		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
+		edit_rate = EditRate.from_xml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
 		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns))
 		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
 		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 0)
@@ -177,17 +177,17 @@ class Sequence:
 	_src_offset:int=0
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "Sequence":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "Sequence":
 		"""Parse from XML"""
 
 		if xml.tag.endswith("MainImageSequence"):
-			return MainImageSequence.fromXml(xml, ns)
+			return MainImageSequence.from_xml(xml, ns)
 		
 		elif xml.tag.endswith("MainAudioSequence"):
-			return MainAudioSequence.fromXml(xml, ns)
+			return MainAudioSequence.from_xml(xml, ns)
 		
 		elif xml.tag.endswith("MarkerSequence"):
-			return MarkerSequence.fromXml(xml, ns)
+			return MarkerSequence.from_xml(xml, ns)
 		
 		# TODO: Implement additional
 		else:
@@ -225,7 +225,7 @@ class MainImageSequence(Sequence):
 	"""An XSD MainImageSequenceType from IMF Core Constraints"""
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
 		"""Parse from XML"""
 		
 		id = xml.find("Id",ns).text
@@ -233,21 +233,21 @@ class MainImageSequence(Sequence):
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
-			resource_list.append(ImageResource.fromXml(resource, ns))
+			resource_list.append(ImageResource.from_xml(resource, ns))
 
 		return cls(id=id, track_id=track_id, _resources=resource_list)
 
 class MainAudioSequence(Sequence):
 	"""Main audio sequence of a segment"""
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
 		"""Parse from XML"""
 		id = xml.find("Id",ns).text
 		track_id = xml.find("TrackId",ns).text
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
-			resource_list.append(AudioResource.fromXml(resource, ns))
+			resource_list.append(AudioResource.from_xml(resource, ns))
 
 		return cls(id=id, track_id=track_id, _resources=resource_list)
 
@@ -255,14 +255,14 @@ class MainAudioSequence(Sequence):
 class MarkerSequence(Sequence):
 	"""Marker sequence"""
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
 		"""Parse from """
 		id = xml.find("Id",ns).text
 		track_id = xml.find("TrackId",ns).text
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
-			resource_list.append(MarkerResource.fromXml(resource, ns))
+			resource_list.append(MarkerResource.from_xml(resource, ns))
 
 		return cls(id=id, track_id=track_id, _resources=resource_list)
 
@@ -278,7 +278,7 @@ class Segment:
 	_src_offset:int=0
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
 
 		id = xml.find("Id",ns).text
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
@@ -286,7 +286,7 @@ class Segment:
 		sequence_list = list()
 
 		for sequence in xml.find("SequenceList", ns):
-			sequence_list.append(Sequence.fromXml(sequence,ns))
+			sequence_list.append(Sequence.from_xml(sequence,ns))
 
 		return cls(
 			id=id,
@@ -339,7 +339,7 @@ class ContentVersion:
 	additional:typing.Any=None	# TODO: Investigate handling of xs:any tags, ambiguous in spec
 
 	@classmethod
-	def fromXml(cls, xml:et.ElementTree, ns:typing.Optional[dict]=None)->"ContentVersion":
+	def from_xml(cls, xml:et.ElementTree, ns:typing.Optional[dict]=None)->"ContentVersion":
 		id = xml.find("Id",ns).text
 		label = xml.find("LabelText",ns).text
 		return cls(id, label)
@@ -356,7 +356,7 @@ class ContentMaturityRating:
 	audiences:typing.Optional[list[str]]=None
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict])->"ContentMaturityRating":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict])->"ContentMaturityRating":
 		"""Parse a ContentMaturtyRatingType from a ContentMaturityRatingList"""
 		agency = xml.find("Agency",ns).text
 		rating = xml.find("Rating",ns).text
@@ -378,7 +378,7 @@ class Locale:
 	content_maturity_ratings:typing.Optional[list[ContentMaturityRating]]=None
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Locale":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Locale":
 		"""Parse a LocaleType from a LocaleListType"""
 		annotation = xsd_optional_string(xml.find("Annotation",ns))
 		
@@ -395,7 +395,7 @@ class Locale:
 		ratings = []
 		for r_list in xml.findall("ContentMaturityRatingList",ns):
 			for rating in r_list.findall("ContentMaturityRating",ns):
-				ratings.append(ContentMaturityRating.fromXml(rating, ns))
+				ratings.append(ContentMaturityRating.from_xml(rating, ns))
 			
 		return cls(annotation, languages, regions, ratings)
 		
@@ -409,7 +409,7 @@ class ExtensionProperty:
 	raw_xml:str
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ExtensionProperty":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ExtensionProperty":
 		"""Capture an extention property from the list"""
 		try:
 			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
@@ -427,7 +427,7 @@ class Signer:
 	raw_xml:str
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
 		"""ds:KeyInfoType from XML"""
 
 		ns.update({"ds":"http://www.w3.org/2000/09/xmldsig#"})
@@ -447,7 +447,7 @@ class Signature:
 	raw_xml:str
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
 		"""ds:KeyInfoType from XML"""
 
 		ns.update({"ds":"http://www.w3.org/2000/09/xmldsig#"})
@@ -464,7 +464,7 @@ class EditRate:
 	edit_rate:tuple[int,int]
 
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "EditRate":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "EditRate":
 		"""Parse EditRateType from XML"""
 		return cls(tuple(int(x) for x in xml.text.split(' ')))
 	
@@ -516,16 +516,16 @@ class Cpl:
 		return timecode.Timecode(tc_addr, tc_rate, timecode.Timecode.Mode.DF if tc_drop else timecode.Timecode.Mode.NDF)
 	
 	@classmethod
-	def fromFile(cls, path:str) -> "Cpl":
+	def from_file(cls, path:str) -> "Cpl":
 		"""Parse an existing CPL from a given file path."""
 		file_cpl = et.parse(path)
-		return cls.fromXml(file_cpl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-3/2016"})
+		return cls.from_xml(file_cpl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-3/2016"})
 	
 	@classmethod
-	def fromXml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Cpl":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Cpl":
 		"""
 		Parse an existing CPL from a given root XMLElementTree Element
-		Intended to be called from Cpl.fromFile(), but you do you.
+		Intended to be called from Cpl.from_file(), but you do you.
 		"""
 		
 		id = xml.find("Id",ns).text
@@ -539,7 +539,7 @@ class Cpl:
 		content_kind = xsd_optional_string(xml.find("ContentKind",ns))
 
 		# Rate and timecode
-		edit_rate = EditRate.fromXml(xml.find("EditRate",ns), ns)
+		edit_rate = EditRate.from_xml(xml.find("EditRate",ns), ns)
 		tc_start = cls.timecode_from_composition(xml.find("CompositionTimecode",ns),ns) if xml.find("CompositionTimecode",ns) is not None \
 			else timecode.Timecode("00:00:00:00",float(edit_rate))
 
@@ -550,31 +550,31 @@ class Cpl:
 		content_versions = list()
 		if xml.find("ContentVersionList",ns) is not None:
 			for cv in xml.find("ContentVersionList",ns).findall("ContentVersion",ns):
-				content_versions.append(ContentVersion.fromXml(cv,ns))
+				content_versions.append(ContentVersion.from_xml(cv,ns))
 		
 		# Locales
 		locale_list = list()
 		for loc_list in xml.findall("LocaleList",ns):
 			for locale in loc_list.findall("Locale",ns):
-				locale_list.append(Locale.fromXml(locale,ns))
+				locale_list.append(Locale.from_xml(locale,ns))
 		
 		# Application extensions
 		extensions_list = []
 		for prop_list in xml.findall("ExtensionProperties",ns):
 			for prop in prop_list:
-				extensions_list.append(ExtensionProperty.fromXml(prop,ns))
+				extensions_list.append(ExtensionProperty.from_xml(prop,ns))
 		
 		# Signer
 		# TODO: Fully implement
 		if xml.find("Signer",ns) is not None:
-			signer = Signer.fromXml(xml.find("Signer",ns),ns)
+			signer = Signer.from_xml(xml.find("Signer",ns),ns)
 		else:
 			signer=None
 		
 		# Signature
 		# TODO: Fully implement
 		if xml.find("ds:Signature",{"ds":"http://www.w3.org/2000/09/xmldsig#"}) is not None:
-			signature = Signature.fromXml(xml.find("ds:Signature",{"ds":"http://www.w3.org/2000/09/xmldsig#"}), ns)
+			signature = Signature.from_xml(xml.find("ds:Signature",{"ds":"http://www.w3.org/2000/09/xmldsig#"}), ns)
 		else:
 			signature=None
 		
@@ -584,7 +584,7 @@ class Cpl:
 		# Segments!
 		segment_list = list()
 		for segment in xml.find("SegmentList",ns):
-			segment_list.append(Segment.fromXml(segment,ns))
+			segment_list.append(Segment.from_xml(segment,ns))
 
 
 		return cls(

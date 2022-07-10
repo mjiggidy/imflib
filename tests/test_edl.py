@@ -20,13 +20,13 @@ def edlFromImf(path_imf:pathlib.Path):
 	if len(glob_temp) != 1:
 		sys.exit(f"{len(glob_temp)} CPLs found")
 
-	input_cpl = cpl.Cpl.fromFile(str(glob_temp[0]))
+	input_cpl = cpl.Cpl.from_file(str(glob_temp[0]))
 
 	glob_temp = list(path_imf.glob("PKL*.xml"))
 	if len(glob_temp) != 1:
 		sys.exit(f"{len(glob_temp)} PKLs found")
 
-	input_pkl = pkl.Pkl.fromFile(str(glob_temp[0]))
+	input_pkl = pkl.Pkl.from_file(str(glob_temp[0]))
 
 	cpl_title = input_cpl.title
 	tc_current = input_cpl.tc_start

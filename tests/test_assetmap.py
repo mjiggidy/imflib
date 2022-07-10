@@ -7,7 +7,7 @@ if not len(sys.argv) > 1:
 for path_imf in sys.argv[1:]:
 	path_assetmap = pathlib.Path(path_imf,"ASSETMAP.xml")
 
-	am = assetmap.AssetMap.fromFile(path_assetmap)
+	am = assetmap.AssetMap.from_file(path_assetmap)
 
 	asset_pkl = am.packing_lists
 
