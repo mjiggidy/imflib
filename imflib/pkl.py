@@ -10,38 +10,47 @@ class Asset:
 	"""An asset packed into this IMF package"""
 	
 	id:str
+	"""Unique asset identifier encoded as a urn:UUID [RFC 4122]"""
+
 	hash:str
+	"""Base64-encoded message digest of the asset"""
+
 	hash_type:str
 	size:int
+	"""File size of the asset in bytes"""
+
 	type:str
-	file_name:str=""
-	annotation_text:str=""
+	"""MIME-type of the asset"""
+
+	original_file_name:typing.Optional[str]=""
+	"""Original file name of the asset when the PKL was created"""
+
+	annotation_text:typing.Optional[str]=""
+	"""Optional description of the asset"""
+
+
 
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:dict) -> list["Asset"]:
 		"""Create an asset from an XML element"""
 
-		assets = []
-
-		for asset in xml.findall("Asset",ns):
-			id = asset.find("Id", ns).text
-			hash = asset.find("Hash", ns).text
-			hash_type = asset.find("HashAlgorithm", ns).attrib.get("Algorithm").split("#")[-1] # TODO: Only SHA-1 is currently supported. Maybe hard-code this?
-			size = int(asset.find("Size", ns).text)
-			type = asset.find("Type", ns).text
-			file_name = xsd_optional_string(asset.find("OriginalFileName", ns))
-			annotation_text = xsd_optional_string(asset.find("AnnotationText", ns))
-			assets.append(cls(
-				id,
-				hash,
-				hash_type,
-				size,
-				type,
-				file_name,
-				annotation_text
-			))
-
-		return assets
+		id = xml.find("Id", ns).text
+		hash = xml.find("Hash", ns).text
+		hash_type = xml.find("HashAlgorithm", ns).attrib.get("Algorithm").split("#")[-1] # TODO: Only SHA-1 is currently supported. Maybe hard-code this?
+		size = int(xml.find("Size", ns).text)
+		type = xml.find("Type", ns).text
+		original_file_name = xsd_optional_string(xml.find("OriginalFileName", ns))
+		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
+		
+		return cls(
+			id=id,
+			hash=hash,
+			hash_type=hash_type,
+			size=size,
+			type=type,
+			original_file_name=original_file_name,
+			annotation_text=annotation_text
+		)
 
 @dataclasses.dataclass(frozen=True)
 class Pkl:
@@ -95,7 +104,9 @@ class Pkl:
 		issuer = xml.find("Issuer", ns).text
 		creator = xml.find("Creator", ns).text
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
-		assets = Asset.from_xml(xml.find("AssetList",ns),ns)
+
+		# TODO: Iterator...?
+		assets = [Asset.from_xml(asset,ns) for asset in xml.find("AssetList",ns)]
 
 		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
 		group_id = xsd_optional_string(xml.find("GroupId", ns))
