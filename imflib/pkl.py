@@ -3,7 +3,7 @@
 
 import dataclasses, typing, datetime
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime, xsd_optional_string
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_uuid_is_valid
 
 @dataclasses.dataclass(frozen=True)
 class Asset:
@@ -15,7 +15,7 @@ class Asset:
 	hash:str
 	"""Base64-encoded message digest of the asset"""
 
-	hash_algorithm:str # Addition via SMPTE 2067-2
+	hash_algorithm:str # NOTE: Addition via SMPTE 2067-2
 	"""Name of the digest type used by the hash"""
 
 	size:int
@@ -35,6 +35,9 @@ class Asset:
 		"""Create an asset from an XML element"""
 
 		id = xml.find("Id", ns).text
+		if not xsd_uuid_is_valid(id):
+			raise ValueError(f"The given UUID {id} is not RFC 4122 compliant")
+
 		size = int(xml.find("Size", ns).text)
 		type = xml.find("Type", ns).text
 		
