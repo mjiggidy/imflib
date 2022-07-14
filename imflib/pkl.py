@@ -71,6 +71,15 @@ class Pkl:
 	icon_id:typing.Optional[str]=""
 	"""Optional UUID reference to an image asset to be used as an icon"""
 
+	# TODO: Implement signing
+	# NOTE: Signature and Signer must both be present; maybe make this one thing
+	signature:typing.Optional[et.Element]=None
+	"""Optional digital signature authenticating the PKL"""
+
+	signer:typing.Optional[et.Element]=None
+	"""Optional identification of the entity signing the PKL"""
+
+
 	@classmethod
 	def from_file(cls, path:str) -> "Pkl":
 		"""Parse an existing PKL from a given file path"""
