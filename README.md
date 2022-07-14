@@ -1,6 +1,6 @@
 # imflib
 
-`imflib` is a library for parsing and manipulating [SMPTE Interoperable Media Format (IMF)](https://www.smpte.org/section-events/all-about-imf-interoperable-master-format) packages.  It is currently under development, but may be of some use if you'd like to try it out.
+`imflib` is a library for parsing and manipulating [SMPTE Interoperable Media Format (IMF)](https://www.smpte.org/standards/st2067) packages.  It is currently under development, but may be of some use if you'd like to try it out.
 
 Where it stands currently, initial read support is there for:
 
