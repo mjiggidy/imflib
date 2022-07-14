@@ -23,7 +23,7 @@ class Asset:
 	"""MIME-type of the asset"""
 
 	original_file_name:typing.Optional[str]=""
-	"""Original file name of the asset when the PKL was created"""
+	"""Optional original file name of the asset when the PKL was created"""
 
 	annotation_text:typing.Optional[str]=""
 	"""Optional description of the asset"""
