@@ -3,6 +3,9 @@ __all__ = ["assetmap","pkl","cpl","imf","opl"]
 import datetime, re, typing
 import xml.etree.ElementTree as et
 
+PAT_UUID = re.compile(r"^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+PAT_DATE = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2}(?:\.\d+)?)(?P<timezone>(?:Z)|([\+\-].+))?$", re.I)
+
 def xsd_datetime_to_datetime(xsd_datetime:str)->datetime:
 	"""Convert XML XSD DateTime to python datetime"""
 	# XSD DateTime format is:
@@ -12,7 +15,7 @@ def xsd_datetime_to_datetime(xsd_datetime:str)->datetime:
 	# Z        - UTC
 	# +|-HH:MM - Timezone offset from UTC
 
-	match_date = re.match(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2}(?:\.\d+)?)(?P<timezone>(?:Z)|([\+\-].+))?", xsd_datetime, re.I)
+	match_date = PAT_DATE.match(xsd_datetime)
 	if not match_date:
 		raise Exception(f"Invalid XSD DateTime: {xsd_datetime}")
 
@@ -42,3 +45,7 @@ def xsd_optional_string(xml:et.Element, default_value:typing.Optional[str]="") -
 def xsd_optional_integer(xml:et.Element, default_value:typing.Optional[int]=None) -> typing.Union[int,None]:
 	"""Return an integer that may be optionally defined in the XML"""
 	return int(xml.text) if xml is not None and xml.text.isnumeric() else default_value
+
+def xsd_uuid_is_valid(uuid:str) -> bool:
+	"""Validate a given UUID against RFC 4122"""
+	return PAT_UUID.match(uuid)
