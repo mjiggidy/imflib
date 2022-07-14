@@ -1,11 +1,14 @@
-import datetime
+# Based on SMPTE 429-8-2007
+# https://ieeexplore.ieee.org/document/7290849?arnumber=7290849
+
+import dataclasses, typing, datetime
 import xml.etree.ElementTree as et
-import dataclasses, typing
 from imflib import xsd_datetime_to_datetime, xsd_optional_string
 
 @dataclasses.dataclass()
 class Asset:
 	"""An asset packed into this IMF package"""
+	
 	id:str
 	hash:str
 	hash_type:str
@@ -43,18 +46,34 @@ class Asset:
 @dataclasses.dataclass(frozen=True)
 class Pkl:
 	"""An IMF PKL Packing List"""
+
 	id:str
-	issuer:str
-	creator:str
+	"""Unique package identifier encoded as a urn:UUID [RFC 4122]"""
+	
 	issue_date:datetime.datetime
+	"""Datetime this PKL was issued"""
+
+	issuer:str
+	"""The person or company that issued this PKL"""
+
+	creator:str
+	"""The facility or system that created this PKL"""
+
 	assets:list["Asset"]
-	annotation_text:str=""
-	group_id:str=""
-	icon_id:str=""
+	"""The list of `Asset`s contained in this package"""
+
+	annotation_text:typing.Optional[str]=""
+	"""Optional description of the distribution package"""
+
+	group_id:typing.Optional[str]=""
+	"""Optional UUID referencing a group of multiple packages to which this package belongs"""
+
+	icon_id:typing.Optional[str]=""
+	"""Optional UUID reference to an image asset to be used as an icon"""
 
 	@classmethod
 	def from_file(cls, path:str) -> "Pkl":
-		"""Parse an existing PKL"""
+		"""Parse an existing PKL from a given file path"""
 
 		file_pkl = et.parse(path)
 		return cls.from_xml(file_pkl.getroot(), {"":"http://www.smpte-ra.org/schemas/2067-2/2016/PKL"})
@@ -74,14 +93,14 @@ class Pkl:
 		icon_id = xsd_optional_string(xml.find("IconId", ns))
 
 		return cls(
-			id,
-			issuer,
-			creator,
-			issue_date,
-			assets,
-			annotation_text,
-			group_id,
-			icon_id
+			id=id,
+			issuer=issuer,
+			creator=creator,
+			issue_date=issue_date,
+			assets=assets,
+			annotation_text=annotation_text,
+			group_id=group_id,
+			icon_id=icon_id
 		)
 	
 	def get_asset(self, id:str) -> "Asset":
