@@ -1,4 +1,4 @@
-https://www.imfug.com/explainer/imf-explainer-en/#what-are-imf-core-constraints-applications-and-plug-ins
+https://www.imfug.com/explainer/imf-explainer-en/#how-are-imf-compositions-delivered-or-stored
 
 # How are IMF Compositions delivered or stored?
 For delivery or storage, one or more IMF Compositions are combined into a **Delivery**. As illustrated below, a Delivery consists of multiple files, which can be stored on the network or on physical media.
