@@ -19,5 +19,5 @@ for path_imf in sys.argv[1:]:
 			print(f"Created on {am.issue_date} by {am.issuer} using {am.creator}.")
 			print(f"Contains {len(am.packing_lists)} packing list(s) and {len(am.assets)-len(am.packing_lists)} assets totalling {am.total_size/1024/1024/1024:.02f} GB:")
 			for asset in am.assets:
-				print(f"  {', '.join(asset.file_paths)}")
+				print(f"  {asset.id}  {', '.join(asset.file_paths)} ({len(asset.chunks)} chunks)")
 		print("---")
