@@ -31,7 +31,7 @@ class Asset:
 	"""Optional description of the asset"""
 
 	@classmethod
-	def from_xml(cls, xml:et.Element, ns:dict) -> list["Asset"]:
+	def from_xml(cls, xml:et.Element, ns:dict) -> "Asset":
 		"""Create an asset from an XML element"""
 
 		id = xml.find("Id", ns).text
