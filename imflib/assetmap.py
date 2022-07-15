@@ -1,9 +1,9 @@
 # Based on SMPTE 429-8-2007: https://ieeexplore.ieee.org/document/7290438
 
 # NOTE:
-# The assetmap provides the mapping between PKL UUIDs and file locations on a volume
+# ASSETMAP.xml provides the mapping between PKL UUIDs and file locations on a volume
 # The assetmap must exist on each volume it references
-# If multiple volumes are referenced, a VolumeIndex(.xml?) file must be present with a unique index on each volume
+# If multiple volumes are referenced, a VOLINDEX.xml file must be present with a unique index on each volume
 # The assetmap may contain mappings for more than one package
 
 import dataclasses, typing, datetime
