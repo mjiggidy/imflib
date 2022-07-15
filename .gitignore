@@ -1,4 +1,5 @@
 examples/
+smpte_docs/
 
 bin/
 pyvenv.cfg
