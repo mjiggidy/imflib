@@ -1,5 +1,6 @@
 examples/
 smpte_docs/
+Scripts/
 
 bin/
 pyvenv.cfg
