@@ -8,8 +8,9 @@
 # The assetmap may contain mappings for more than one package
 
 import dataclasses, typing, datetime
+from multiprocessing.sharedctypes import Value
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_integer, xsd_optional_bool, xsd_uuid_is_valid
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, xsd_optional_integer, xsd_optional_bool, xsd_uuid_is_valid, UserText
 
 @dataclasses.dataclass(frozen=True)
 class AssetMap:
@@ -18,10 +19,7 @@ class AssetMap:
 	id:str
 	"""Unique identifier for this asset map encoded as a urn:UUID [RFC 4122]"""
 
-	annotation_text:str
-	"""Optional description of this asset map"""
-
-	creator:str
+	creator:UserText
 	"""The facility or system that created this asset map"""
 
 	volume_count:int	# TODO: Per SMPTE 0429-9-2014 update, "Volume Count shall be 1."  So uh...
@@ -30,11 +28,14 @@ class AssetMap:
 	issue_date:datetime.datetime
 	"""Datetime this asset map was issued"""
 
-	issuer:str
+	issuer:UserText
 	"""The person or company that issued this asset map"""
 
 	assets:list["Asset"]
 	"""The list of mapped `Asset`s"""
+
+	annotation_text:typing.Optional[UserText]=None
+	"""Optional description of this asset map"""
 
 	@classmethod
 	def from_file(cls, path:str)->"AssetMap":
@@ -49,11 +50,15 @@ class AssetMap:
 		if not xsd_uuid_is_valid(id):
 			raise ValueError(f"The given UUID {id} is not RFC 4122 compliant")
 		
-		annotation_text = xsd_optional_string(xml.find("AnnotationText",ns))
-		creator = xml.find("Creator",ns).text
+		
+		UserText.from_xml(xml.find("AnnotationText",ns))
+		
+		annotation_text = xsd_optional_usertext(xml.find("AnnotationText",ns))
+		creator = UserText.from_xml(xml.find("Creator",ns))
 		volume_count = int(xml.find("VolumeCount",ns).text)
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
-		issuer = xml.find("Issuer",ns).text
+		issuer = UserText.from_xml(xml.find("Issuer",ns))
+
 		assets = [Asset.from_xml(asset,ns) for asset in xml.find("AssetList",ns)]
 
 		return cls(
@@ -74,7 +79,13 @@ class AssetMap:
 	@property
 	def total_size(self)->int:
 		"""Total size of the assets in this map"""
-		return sum(asset.total_size for asset in self.assets)
+		# TODO: "If the Length parameter is absent, the length of the chunk shall be that of the asset as expressed by the respective Packing List."
+		# This allows cases where some chunks may be defined and some may not, thus asset.total_size may be None or throw an exception depending on how I handle that.
+		# Think about this further.
+		asset_sizes = [asset.total_size for asset in self.assets]
+		if None in asset_sizes:
+			return None
+		return sum(asset_sizes)
 
 	def get_asset(self, id:str) -> "Asset":
 		"""Get an Asset from the AssetMap based on the URN ID"""
@@ -118,7 +129,7 @@ class Asset:
 	is_packing_list:typing.Optional[bool]=False
 	"""Whether the asset is a Packing List (PKL)"""
 
-	annotation_text:typing.Optional[str]=""
+	annotation_text:typing.Optional[UserText]=None
 	"""Optional description of this asset"""
 
 	@classmethod
@@ -131,7 +142,7 @@ class Asset:
 
 		is_packing_list = xsd_optional_bool(xml.find("PackingList",ns))
 		chunks = [Chunk.from_xml(chunk, ns) for chunk in xml.find("ChunkList",ns)]
-		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
+		annotation_text = xsd_optional_usertext(xml.find("AnnotationText", ns))
 
 		return cls(
 			id=id,
@@ -143,7 +154,13 @@ class Asset:
 	@property
 	def total_size(self)->int:
 		"""Total size of this asset in bytes"""
-		return sum(chunk.size for chunk in self.chunks)
+		# TODO: "If the Length parameter is absent, the length of the chunk shall be that of the asset as expressed by the respective Packing List."
+		# This allows cases where some chunks may be defined and some may not.
+		# Think about this further.
+		chunk_sizes = [chunk.size for chunk in self.chunks]
+		if None in chunk_sizes:
+			return None
+		return sum(chunk_sizes)
 	
 	@property
 	def file_paths(self)->list[str]:
