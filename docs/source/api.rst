@@ -5,4 +5,5 @@ API
    :toctree: _autosummary
    :recursive:
 
-   imflib
+   imflib.assetmap
+   imflib.pkl
