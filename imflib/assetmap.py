@@ -7,7 +7,7 @@
 # If multiple volumes are referenced, a VOLINDEX.xml file must be present with a unique index on each volume
 # The assetmap may contain mappings for more than one package
 
-import dataclasses, typing, datetime
+import dataclasses, typing, datetime, uuid
 from multiprocessing.sharedctypes import Value
 import xml.etree.ElementTree as et
 from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, xsd_optional_integer, xsd_optional_bool, xsd_uuid_is_valid, UserText
@@ -16,7 +16,7 @@ from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_u
 class AssetMap:
 	"""An Asset Map component of an IMF package"""
 
-	id:str
+	id:uuid.UUID
 	"""Unique identifier for this asset map encoded as a urn:UUID [RFC 4122]"""
 
 	creator:UserText
@@ -46,19 +46,13 @@ class AssetMap:
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"AssetMap":
 		"""Parse the AssetMap from XML"""
-		id = xml.find("Id",ns).text
-		if not xsd_uuid_is_valid(id):
-			raise ValueError(f"The given UUID {id} is not RFC 4122 compliant")
-		
-		
-		UserText.from_xml(xml.find("AnnotationText",ns))
-		
-		annotation_text = xsd_optional_usertext(xml.find("AnnotationText",ns))
+		id = uuid.UUID(xml.find("Id",ns).text)
 		creator = UserText.from_xml(xml.find("Creator",ns))
-		volume_count = int(xml.find("VolumeCount",ns).text)
-		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 		issuer = UserText.from_xml(xml.find("Issuer",ns))
+		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
+		volume_count = int(xml.find("VolumeCount",ns).text)
 
+		annotation_text = xsd_optional_usertext(xml.find("AnnotationText",ns))
 		assets = [Asset.from_xml(asset,ns) for asset in xml.find("AssetList",ns)]
 
 		return cls(
@@ -119,7 +113,7 @@ class VolumeIndex:
 class Asset:
 	"""An Asset as defined in an IMF AssetMap"""
 
-	id:str
+	id:uuid.UUID
 	"""Unique package identifier encoded as a urn:UUID [RFC 4122]"""
 
 
@@ -136,12 +130,10 @@ class Asset:
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Asset":
 		"""Parse an Asset from an AssetList XML Element"""
 		
-		id = xml.find("Id", ns).text
-		if not xsd_uuid_is_valid(id):
-			raise ValueError(f"The given UUID {id} is not RFC 4122 compliant")
+		id = uuid.UUID(xml.find("Id", ns).text)
+		chunks = [Chunk.from_xml(chunk, ns) for chunk in xml.find("ChunkList",ns)]
 
 		is_packing_list = xsd_optional_bool(xml.find("PackingList",ns))
-		chunks = [Chunk.from_xml(chunk, ns) for chunk in xml.find("ChunkList",ns)]
 		annotation_text = xsd_optional_usertext(xml.find("AnnotationText", ns))
 
 		return cls(

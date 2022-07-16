@@ -12,6 +12,7 @@ for path_imf in sys.argv[1:]:
 	for path_pkl in path_pkls:
 		pkl = Pkl.from_file(path_pkl)
 		print(f"{path_pkl.name}:")
+		print(f"Has ID {pkl.id}")
 		print(f"Created on {pkl.issue_date} by {pkl.issuer} using {pkl.creator}")
 		print(f"Annotations: {pkl.annotation_text}")
 		print(f"Contains {len(pkl.assets)} asset(s) totaling {pkl.total_size/1000/1000/1000:.2f} GB:")

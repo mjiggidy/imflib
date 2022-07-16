@@ -16,6 +16,7 @@ for path_imf in sys.argv[1:]:
 	else:
 		for pkl in asset_pkl:
 			print(f"{path_imf.split('/')[-1]}")
+			print(f"Package ID is {am.id}")
 			print(f"Created on {am.issue_date} by {am.issuer} using {am.creator}.")
 			if am.total_size is not None:
 				print(f"Total size of assets: {am.total_size/1024/1024/1024:.02f} GB")

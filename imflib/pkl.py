@@ -1,7 +1,7 @@
 # Based on SMPTE 429-8-2007: https://ieeexplore.ieee.org/document/7290849
 # With additions from SMPTE 2067-2-2020: https://ieeexplore.ieee.org/document/9097478
 
-import dataclasses, typing, datetime
+import dataclasses, typing, datetime, uuid
 import xml.etree.ElementTree as et
 from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, xsd_uuid_is_valid, UserText
 
@@ -9,7 +9,7 @@ from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_u
 class Asset:
 	"""An asset packed into this IMF package"""
 	
-	id:str
+	id:uuid.UUID
 	"""Unique asset identifier encoded as a urn:UUID [RFC 4122]"""
 
 	hash:str
@@ -34,10 +34,7 @@ class Asset:
 	def from_xml(cls, xml:et.Element, ns:dict) -> "Asset":
 		"""Create an asset from an XML element"""
 
-		id = xml.find("Id", ns).text
-		if not xsd_uuid_is_valid(id):
-			raise ValueError(f"The given UUID {id} is not RFC 4122 compliant")
-
+		id = uuid.UUID(xml.find("Id", ns).text)
 		size = int(xml.find("Size", ns).text)
 		type = xml.find("Type", ns).text
 		
@@ -62,7 +59,7 @@ class Asset:
 class Pkl:
 	"""An IMF PKL Packing List"""
 
-	id:str
+	id:uuid.UUID
 	"""Unique package identifier encoded as a urn:UUID [RFC 4122]"""
 	
 	issue_date:datetime.datetime
@@ -106,7 +103,7 @@ class Pkl:
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Pkl":
 		"""Parse a PKL from XML"""
 
-		id = xml.find("Id", ns).text
+		id = uuid.UUID(xml.find("Id", ns).text)
 		issuer = UserText.from_xml(xml.find("Issuer", ns))
 		creator = UserText.from_xml(xml.find("Creator", ns))
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
