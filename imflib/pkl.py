@@ -3,7 +3,7 @@
 
 import dataclasses, typing, datetime
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_uuid_is_valid
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, xsd_uuid_is_valid, UserText
 
 @dataclasses.dataclass(frozen=True)
 class Asset:
@@ -24,10 +24,10 @@ class Asset:
 	type:str
 	"""MIME-type of the asset"""
 
-	original_file_name:typing.Optional[str]=""
+	original_file_name:typing.Optional[UserText]=""
 	"""Optional original file name of the asset when the PKL was created"""
 
-	annotation_text:typing.Optional[str]=""
+	annotation_text:typing.Optional[UserText]=""
 	"""Optional description of the asset"""
 
 	@classmethod
@@ -45,8 +45,8 @@ class Asset:
 		hash = xml.find("Hash", ns).text
 		hash_algorithm = xml.find("HashAlgorithm", ns).attrib.get("Algorithm").split("#")[-1]
 		
-		original_file_name = xsd_optional_string(xml.find("OriginalFileName", ns))
-		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
+		original_file_name = xsd_optional_usertext(xml.find("OriginalFileName", ns))
+		annotation_text = xsd_optional_usertext(xml.find("AnnotationText", ns))
 		
 		return cls(
 			id=id,
@@ -68,16 +68,16 @@ class Pkl:
 	issue_date:datetime.datetime
 	"""Datetime this PKL was issued"""
 
-	issuer:str
+	issuer:UserText
 	"""The person or company that issued this PKL"""
 
-	creator:str
+	creator:UserText
 	"""The facility or system that created this PKL"""
 
 	assets:list["Asset"]
 	"""The list of `Asset`s contained in this package"""
 
-	annotation_text:typing.Optional[str]=""
+	annotation_text:typing.Optional[UserText]=""
 	"""Optional description of the distribution package"""
 
 	group_id:typing.Optional[str]=""
@@ -107,14 +107,14 @@ class Pkl:
 		"""Parse a PKL from XML"""
 
 		id = xml.find("Id", ns).text
-		issuer = xml.find("Issuer", ns).text
-		creator = xml.find("Creator", ns).text
+		issuer = UserText.from_xml(xml.find("Issuer", ns))
+		creator = UserText.from_xml(xml.find("Creator", ns))
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 
 		# TODO: Iterator...?
 		assets = [Asset.from_xml(asset,ns) for asset in xml.find("AssetList",ns)]
 
-		annotation_text = xsd_optional_string(xml.find("AnnotationText", ns))
+		annotation_text = xsd_optional_usertext(xml.find("AnnotationText", ns))
 		group_id = xsd_optional_string(xml.find("GroupId", ns))
 		icon_id = xsd_optional_string(xml.find("IconId", ns))
 
