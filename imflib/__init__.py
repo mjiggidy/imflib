@@ -1,10 +1,44 @@
 __all__ = ["assetmap","pkl","cpl","imf","opl"]
 
-import datetime, re, typing
+import datetime, re, typing, dataclasses
 import xml.etree.ElementTree as et
 
 PAT_UUID = re.compile(r"^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 PAT_DATE = re.compile(r"^(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2})T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2}(?:\.\d+)?)(?P<timezone>(?:Z)|([\+\-].+))?$", re.I)
+
+@dataclasses.dataclass(frozen=True)
+class UserText:
+	"""UserText XSD data type"""
+
+	# <xs:complexType name="UserText">
+	# 	<xs:simpleContent>
+	# 		<xs:extension base="xs:string">
+	# 			<xs:attribute name="language" type="xs:language" use="optional" default="en"/>
+	# 		</xs:extension>
+	# 	</xs:simpleContent>
+	# </xs:complexType>
+
+	text:str=""
+	"""Human-readable string"""
+	language:str="eng"
+	"""Language of `text`"""
+
+	def __str__(self):
+		return self.text
+	
+	@classmethod
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "UserText":
+		"""Parse an xs:UserText type"""
+
+		text = xml.text
+		lang = xml.attrib.get("language","en")
+
+		return cls(
+			text=text,
+			language=lang
+		)
+
+
 
 def xsd_datetime_to_datetime(xsd_datetime:str)->datetime:
 	"""Convert XML XSD DateTime to python datetime"""
@@ -49,6 +83,10 @@ def xsd_optional_integer(xml:typing.Optional[et.Element], default_value:typing.O
 def xsd_optional_bool(xml:typing.Optional[et.Element], default_value:bool=False) -> bool:
 	"""Return a `bool` from an optional `xs:bool`"""
 	return (xml.text.lower() == "true") if xml is not None else default_value
+
+def xsd_optional_usertext(xml:typing.Optional[et.Element], default_value:typing.Optional[UserText]=None) -> typing.Union[UserText,None]:
+	"""Return an optional `UserText` type"""
+	return UserText.from_xml(xml) if xml is not None else default_value
 
 def xsd_uuid_is_valid(uuid:str) -> bool:
 	"""Validate a given UUID against RFC 4122"""
