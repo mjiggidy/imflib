@@ -5,6 +5,14 @@ import dataclasses, typing, datetime, abc, uuid, re
 import xml.etree.ElementTree as et
 from imflib import xsd_optional_string, xsd_datetime_to_datetime, xsd_optional_usertext, UserText, Security
 
+@dataclasses.dataclass(frozen=True)
+class Handle:
+	"""TODO: Implement sctn 8 HandleType which is a relative URI such as:
+	cpl/virtual-tracks/ddcf49e4-dc5a-49ef-9eb5-55a2fd55c3cc
+	macros/image-scaler-1
+	macros/image-scaler-1/outputs/images
+	"""
+
 class MacroName(str):
 	"""A string restricted confined to the opl:MacroNameType schema"""
 
@@ -20,6 +28,13 @@ class MacroName(str):
 @dataclasses.dataclass(frozen=True)
 class Macro(abc.ABC):
 	"""An abstract OPL Macro"""
+
+	"""
+	TODO: 7. Processing Model from st2067-100-2014:
+	Each Macro present in the MacroList element shall be executed in full and in the order it appears in the element.
+	A first Macro instance that references the output of a second Macro instance shall not appear in the MacroList 
+	before the second Macro instance.
+	"""
 	
 	name:MacroName
 	"""The unique name of the macro instance"""
@@ -35,6 +50,11 @@ class Macro(abc.ABC):
 @dataclasses.dataclass(frozen=True)
 class PresetMacro(Macro):
 	"""A Preset Macro"""
+
+	"""TODO: Annex B
+	An Output Profile List instance that contains a Preset Macro instance shall not contain any other Macro instances.
+	Such an Output Profile List instance is called a Simple OPL.
+	"""
 	
 	preset:str=""
 
@@ -59,8 +79,13 @@ MACRO_TYPES = {
 @dataclasses.dataclass(frozen=True)
 class Alias:
 	"""An OPL Alias"""
-	# TODO: Spec loosely defines as lax processing, any namespace. Cool.
-	# TODO: Decide upon a better implementation.
+	
+	"""
+	TODO:
+	Given the Alias element "<Alias handle='macros/image-scaler-1/outputs/images'>MainImage</Alias>",
+	the Handle "alias/MainImage" is synonymous with the Handle "macros/image-scaler-1/outputs/images".
+	"""
+
 	raw_xml:str
 
 	@classmethod
