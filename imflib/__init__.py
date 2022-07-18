@@ -38,6 +38,27 @@ class UserText:
 			language=lang
 		)
 
+# TODO: Placeholder data structure for now, may need to replace with an external dependency
+# TODO: Need to even get some IMFs that are signed.  Never seen one.
+@dataclasses.dataclass(frozen=True)
+class Security:
+	"""NOTE: Untested placeholder data class that is unlikely to actually work"""
+
+	signature:et.Element
+	"""The digitial signature"""
+
+	signer:et.Element
+	"""The unique identity of the entity"""
+
+	@classmethod
+	def from_xml(cls, xml_signer:et.Element, xml_signature:et.Element, ns:typing.Optional[dict]=None) -> "Security":
+		"""Parse the securty from XML"""
+		return cls(
+			signature=xml_signature,
+			signer=xml_signer
+		)
+
+
 
 
 def xsd_datetime_to_datetime(xsd_datetime:str)->datetime:
