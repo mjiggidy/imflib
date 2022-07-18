@@ -1,11 +1,9 @@
 # TODO: Actually make this
 # https://smpte-ra.org/sites/default/files/st2067-100a-2014.xsd
 
-import dataclasses, typing, datetime, abc
+import dataclasses, typing, datetime, abc, uuid
 import xml.etree.ElementTree as et
-from . import xsd_optional_string, xsd_datetime_to_datetime
-
-
+from . import xsd_optional_string, xsd_datetime_to_datetime, xsd_optional_usertext, UserText, Security
 
 @dataclasses.dataclass(frozen=True)
 class Macro(abc.ABC):
@@ -79,17 +77,38 @@ class ExtensionProperty:
 class Opl:
 	"""An IMF Output Profile List"""
 
-	id:str
-	annotation_text:str
+	id:uuid.UUID
+	"""Unique identifier for this OPL; encoded as a urn:UUID [RFC 4122]"""
+
+	cpl_id:uuid.UUID
+	"""Existing UUID of the CPL upon which this OPL operates; encoded as a urn:UUID [RFC 4122]"""
+
 	issue_date:datetime.datetime
-	issuer:str
-	creator:str
-	cpl_id:str
+	"""Datetime this OPL was issued"""
 
-	extension_properties:list[ExtensionProperty]
-	alias_list:list[Alias]
-	macro_list:list[Macro]
+	aliases:set[Alias]
+	"""A set of unique `Alias` elements which define additional synonyms for `Handle`s"""
 
+	macros:list[Macro]
+	"""An ordered list of `Macro` elements"""
+	# TODO: Per st2067-100-2014: "Multiple Macro elements may have the same type but no two Macro elements shall have the same Name value."
+
+	# NOTE: Issuer and creator are optional, unlike CPL/PKL/etc
+	issuer:typing.Optional[UserText]=None
+	"""The person or company that issued this OPL"""
+
+	extension_properties:list[ExtensionProperty]=dataclasses.field(default_factory=list)
+	"""An unordered list of `ExtensionProperty`s which may be used by applications to add descriptive metadata to the OPL"""
+	# TODO: Unordered yes; unique... maybe?  So a set instead of a list perhaps?
+
+	creator:typing.Optional[UserText]=None
+	"""The facility or system that created this OPL"""
+
+	annotation_text:typing.Optional[UserText]=None
+	"""Optional description of this OPL"""
+
+	security:typing.Optional[Security]=None
+	"""Signer and signature of authenticity"""
 
 	@classmethod
 	def from_file(cls, path:str) -> "Opl":
@@ -104,23 +123,18 @@ class Opl:
 		Intended to be called from Opl.from_file(), but you do you.
 		"""
 
-		id = xml.find("Id", ns).text
-		annotation_text = xsd_optional_string(xml.find("Annotation",ns))
+		id = uuid.UUID(xml.find("Id", ns).text)
+		cpl_id = uuid.UUID(xml.find("CompositionPlaylistId",ns).text)
+		annotation_text = xsd_optional_usertext(xml.find("Annotation",ns))
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
-		issuer = xsd_optional_string(xml.find("Issuer",ns))
-		creator = xsd_optional_string(xml.find("Creator",ns))
-		cpl_id = xml.find("CompositionPlaylistId",ns).text
+		issuer = xsd_optional_usertext(xml.find("Issuer",ns))
+		creator = xsd_optional_usertext(xml.find("Creator",ns))
 
-		# Extension properties
-		extension_properties = list()
-		for extension_properties in xml.findall("ExtensionProperties",ns):
-			for prop in extension_properties:
-				extension_properties.append(ExtensionProperty.from_xml(prop,ns))
+		# Extension properties list
+		extension_properties = [prop for prop in xml.findall("ExtensionProperties",ns)]
 		
-		# Alias list
-		alias_list = list()
-		for alias in xml.find("AliasList",ns):
-			alias_list.append(Alias.from_xml(alias,ns))
+		# Alias set
+		alias_list = {alias_list.add(Alias.from_xml(alias,ns)) for alias in xml.find("AliasList",ns)}
 		
 		# Macro list
 		macro_list = list()
@@ -139,6 +153,6 @@ class Opl:
 			creator=creator,
 			cpl_id=cpl_id,
 			extension_properties=extension_properties,
-			alias_list=alias_list,
-			macro_list=macro_list
+			aliases=alias_list,
+			macros=macro_list
 		)
