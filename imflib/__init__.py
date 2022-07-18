@@ -20,7 +20,7 @@ class UserText:
 
 	text:str=""
 	"""Human-readable string"""
-	language:str="eng"
+	language:str="en"
 	"""Language of `text`"""
 
 	def __str__(self):
