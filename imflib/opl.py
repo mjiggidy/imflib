@@ -1,16 +1,31 @@
 # TODO: Actually make this
 # https://smpte-ra.org/sites/default/files/st2067-100a-2014.xsd
 
-import dataclasses, typing, datetime, abc, uuid
+import dataclasses, typing, datetime, abc, uuid, re
 import xml.etree.ElementTree as et
-from . import xsd_optional_string, xsd_datetime_to_datetime, xsd_optional_usertext, UserText, Security
+from imflib import xsd_optional_string, xsd_datetime_to_datetime, xsd_optional_usertext, UserText, Security
+
+class MacroName(str):
+	"""A string restricted confined to the opl:MacroNameType schema"""
+
+	PAT_MACRO_NAME_TYPE = re.compile(r"^[a-zA-Z][a-zA-Z0-9-]*$")
+
+	def __new__(cls, input_string:str):
+		if not cls.PAT_MACRO_NAME_TYPE.match(input_string):
+			raise ValueError("String does not validate against the opl:MacroNameType schema")
+		
+		return super().__new__(cls, input_string)
+
 
 @dataclasses.dataclass(frozen=True)
 class Macro(abc.ABC):
 	"""An abstract OPL Macro"""
 	
-	name:str
-	annotation_text:str
+	name:MacroName
+	"""The unique name of the macro instance"""
+
+	annotation_text:typing.Optional[UserText]=None
+	"""Optional description of this macro"""
 
 	@abc.abstractclassmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Macro":
@@ -21,13 +36,13 @@ class Macro(abc.ABC):
 class PresetMacro(Macro):
 	"""A Preset Macro"""
 	
-	preset:str
+	preset:str=""
 
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"PresetMacro":
 
-		name = xml.find("Name",ns).text
-		annotation_text = xsd_optional_string(xml.find("Annotation",ns))
+		name = MacroName(xml.find("Name",ns).text)
+		annotation_text = xsd_optional_usertext(xml.find("Annotation",ns))
 		preset = xml.find("Preset",ns).text
 
 		return cls(

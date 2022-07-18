@@ -25,8 +25,6 @@ def opl_info(opl:opl.Opl):
 	for macro in opl.macros:
 		print(f"  {macro}")
 	
-
-
 def main(paths:list[str]):
 	"""Parse an OPL for secret testings"""
 
