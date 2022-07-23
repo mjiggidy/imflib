@@ -1,7 +1,10 @@
 API
 ===
-
+.. currentmodule:: imflib
 .. autosummary::
-   :toctree: _autosummary
+   :toctree: generated
    :recursive:
-   imflib
+
+   assetmap
+   pkl
+   opl
