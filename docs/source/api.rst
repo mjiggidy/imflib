@@ -6,3 +6,4 @@ API
    :recursive:
 
    imflib
+   imflib.assetmap
