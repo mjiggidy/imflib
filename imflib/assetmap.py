@@ -8,9 +8,8 @@
 # The assetmap may contain mappings for more than one package
 
 import dataclasses, typing, datetime, uuid
-from multiprocessing.sharedctypes import Value
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, xsd_optional_integer, xsd_optional_bool, xsd_uuid_is_valid, UserText
+from imflib import xsd_datetime_to_datetime, xsd_optional_usertext, xsd_optional_integer, xsd_optional_bool, UserText
 
 @dataclasses.dataclass(frozen=True)
 class AssetMap:
@@ -87,7 +86,8 @@ class AssetMap:
 			if asset.id == id: return asset		
 		return None
 
-# TODO: Per SMPTE 0429-9-2014 update, "The VolumeIndex structure is not used."  Look into the existence of any 2007-era spec'd IMFs?
+# TODO: Per SMPTE 0429-9-2014 update, "The VolumeIndex structure is not used."
+# However, some example IMFs seem to include a VOLINDEX.  Research further.
 @dataclasses.dataclass(frozen=True)
 class VolumeIndex:
 	"""A `VolumeIndex` file required only in multi-volume packages"""

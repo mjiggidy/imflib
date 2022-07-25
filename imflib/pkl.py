@@ -3,7 +3,7 @@
 
 import dataclasses, typing, datetime, uuid
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, xsd_uuid_is_valid, UserText
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, UserText
 
 @dataclasses.dataclass(frozen=True)
 class Asset:

@@ -3,15 +3,8 @@
 
 import dataclasses, typing, datetime, abc, uuid, re
 import xml.etree.ElementTree as et
-from imflib import xsd_optional_string, xsd_datetime_to_datetime, xsd_optional_usertext, UserText, Security
+from imflib import xsd_datetime_to_datetime, xsd_optional_usertext, UserText, Security
 
-@dataclasses.dataclass(frozen=True)
-class Handle:
-	"""TODO: Implement sctn 8 HandleType which is a relative URI such as:
-	cpl/virtual-tracks/ddcf49e4-dc5a-49ef-9eb5-55a2fd55c3cc
-	macros/image-scaler-1
-	macros/image-scaler-1/outputs/images
-	"""
 
 class MacroName(str):
 	"""A string restricted confined to the opl:MacroNameType schema"""
@@ -79,23 +72,28 @@ MACRO_TYPES = {
 @dataclasses.dataclass(frozen=True)
 class Alias:
 	"""An OPL Alias"""
+
+	# TODO: "Note: two Alias elements shall have the same value."
+	# Maybe make this a dict instead
+
+	handle:str	# TODO: These values should both
+	alias:str	# be restricted to relative URIs
 	
 	"""
 	TODO:
 	Given the Alias element "<Alias handle='macros/image-scaler-1/outputs/images'>MainImage</Alias>",
 	the Handle "alias/MainImage" is synonymous with the Handle "macros/image-scaler-1/outputs/images".
 	"""
-
-	raw_xml:str
-
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Alias":
-		"""Capture an alias from the list"""
-		try:
-			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
-		except Exception as e:
-			raw_xml = f"Unknown alias: {e}"
-		return cls(raw_xml)
+		"""Capture an alias from XML"""
+		handle = xml.attrib.get("handle")
+		alias = xml.text
+		return cls(
+			handle=handle,
+			alias=alias
+		)
+
 
 @dataclasses.dataclass(frozen=True)
 class ExtensionProperty:
