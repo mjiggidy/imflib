@@ -1,8 +1,8 @@
 API
 ===
 
-.. currentmodule:: imflib.pkl
-.. autoclass:: Pkl
+.. currentmodule:: imflib
+.. autoclass:: pkl.Pkl
 
 .. autosummary::
    :toctree: generated
