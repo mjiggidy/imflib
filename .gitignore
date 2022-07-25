@@ -5,6 +5,9 @@ Scripts/
 bin/
 pyvenv.cfg
 
+# How is this not already here
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
