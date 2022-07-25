@@ -72,7 +72,7 @@ def xsd_datetime_to_datetime(xsd_datetime:str)->datetime:
 
 	match_date = PAT_DATE.match(xsd_datetime)
 	if not match_date:
-		raise Exception(f"Invalid XSD DateTime: {xsd_datetime}")
+		raise ValueError(f"Invalid XSD DateTime: {xsd_datetime}")
 
 	# Reconcile timezone situation
 	if match_date.group("timezone") is None or match_date.group("timezone").lower() == 'z':
