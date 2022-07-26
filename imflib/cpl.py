@@ -351,9 +351,15 @@ class EssenceDescriptor:
 @dataclasses.dataclass(frozen=True)
 class ContentMaturityRating:
 	"""Content maturity rating and info"""
-	agency:str
+	
 	rating:str
-	audiences:typing.Optional[list[str]]=None
+	"""Human-readable rating issued by the Agency"""
+	
+	agency:str
+	"""The agency issuing the rating"""
+	# NOTE: There shall be only one ContentMaturityRating element with a given value of the Agency element.
+	
+	audiences:dict[str,str]=dataclasses.field(default_factory=dict)
 
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict])->"ContentMaturityRating":
@@ -361,12 +367,13 @@ class ContentMaturityRating:
 		agency = xml.find("Agency",ns).text
 		rating = xml.find("Rating",ns).text
 
-		audience_list = list()
-		for aud in xml.findall("Audience",ns):
-			# TODO: Retain scope attribute?
-			audience_list.append(aud.text)
+		audiences = {aud.attrib.get("scope"):aud.text for aud in xml.findall("Audience",ns)}
 		
-		return cls(agency, rating, audience_list)
+		return cls(
+			agency=agency,
+			rating=rating,
+			audiences=audiences
+		)
 
 @dataclasses.dataclass(frozen=True)
 class Locale:
@@ -416,7 +423,6 @@ class Locale:
 		)
 		
 
-
 @dataclasses.dataclass(frozen=True)
 class ExtensionProperty:
 	"""Application extension"""
@@ -432,45 +438,6 @@ class ExtensionProperty:
 		except Exception as e:
 			raw_xml = f"Unknown extension property: {e}"
 		
-		return cls(raw_xml)
-
-
-
-# TODO: UNTESTED
-@dataclasses.dataclass(frozen=True)
-class Signer:
-	"""Signing info"""
-	raw_xml:str
-
-	@classmethod
-	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
-		"""ds:KeyInfoType from XML"""
-
-		ns.update({"ds":"http://www.w3.org/2000/09/xmldsig#"})
-
-		try:
-			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
-		except Exception as e:
-			raw_xml = f"Unknown signer type: {e}"
-		return cls(raw_xml)
-
-		
-
-@dataclasses.dataclass(frozen=True)
-class Signature:
-	"""ds:Signature"""
-
-	raw_xml:str
-
-	@classmethod
-	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Signer":
-		"""ds:KeyInfoType from XML"""
-
-		ns.update({"ds":"http://www.w3.org/2000/09/xmldsig#"})
-		try:
-			raw_xml = et.tostring(xml, encoding="unicode", method="xml").strip()
-		except Exception as e:
-			raw_xml = f"Unknown signature type: {e}"
 		return cls(raw_xml)
 
 @dataclasses.dataclass(frozen=True)
@@ -629,25 +596,13 @@ class Cpl:
 		runtime = cls.xsd_optional_runtime(xml.find("TotalRuntime",ns))
 		
 		# ContentVersionList
-		content_versions = list()
-		cvl = xml.find("ContentVersionList",ns)
-		if cvl:
-			for cv in cvl:
-				content_versions.append(ContentVersion.from_xml(cv,ns))
+		content_versions = [ContentVersion.from_xml(cv,ns) for cv in xml.findall("ContentVersionList/ContentVersion",ns)]
 		
 		# Locales
-		locale_list = list()
-		ll = xml.find("LocaleList",ns)
-		if ll:
-			for locale in ll:
-				locale_list.append(Locale.from_xml(locale,ns))
+		locale_list = [Locale.from_xml(locale,ns) for locale in xml.findall("LocaleList/Locale",ns)]
 		
 		# Extensions
-		extensions_list = list()
-		el = xml.find("ExtensionProperties",ns)
-		if el:
-			for prop in el:
-				extensions_list.append(ExtensionProperty.from_xml(prop,ns))
+		extensions_list = [ExtensionProperty.from_xml(prop,ns) for prop in xml.findall("ExtensionProperties/*",ns)]
 
 		# Signer and signature
 		# TODO: Definitely needs testing
