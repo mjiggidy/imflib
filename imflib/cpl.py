@@ -332,17 +332,31 @@ class Segment:
 
 @dataclasses.dataclass(frozen=True)
 class ContentVersion:
-	"""A content version"""
+	"""A version of the content represented in the CPL"""
 
 	id:str
-	label:str
-	additional:typing.Any=None	# TODO: Investigate handling of xs:any tags, ambiguous in spec
+	"""UUID of the content represented by the CPL"""
+
+	label:UserText
+	"""Description of the version of the content"""
+
+	additional:list[et.Element]=dataclasses.field(default_factory=list)
+	"""Additional properties of this content version"""
+	# TODO: Investigate handling of xs:any tags, ambiguous in spec
 
 	@classmethod
 	def from_xml(cls, xml:et.ElementTree, ns:typing.Optional[dict]=None)->"ContentVersion":
+		
 		id = xml.find("Id",ns).text
-		label = xml.find("LabelText",ns).text
-		return cls(id, label)
+		label = UserText.from_xml(xml.find("LabelText",ns))
+
+		# TODO: Seems kind of hacky here
+		standard = {
+			xml.find("Id",ns),
+			xml.find("LabelText",ns)
+		}
+		additional_properties = [prop for prop in xml if prop not in standard]
+		return cls(id, label, additional_properties)
 
 @dataclasses.dataclass(frozen=True)
 class EssenceDescriptor:
