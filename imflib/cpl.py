@@ -366,17 +366,23 @@ class EssenceDescriptor:
 	id:uuid.UUID
 	"""Unique identifier for this CPL encoded as a urn:UUID [RFC 4122]"""
 
-	raw_xml:et.Element
+	descriptor_data:list[et.Element]=dataclasses.field(default_factory=list())
 	"""The raw XML data for this essence descriptor"""
 
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "EssenceDescriptor":
 		"""Parse an essence descriptor from its XML"""
 		id = uuid.UUID(xml.find("Id",ns).text)
-		raw_xml = xml
+
+		# TODO: Seems kind of hacky here
+		standard = {
+			xml.find("Id",ns),
+		}
+		descriptor_data = [prop for prop in xml if prop not in standard]
+
 		return cls(
 			id=id,
-			raw_xml=raw_xml
+			descriptor_data=descriptor_data
 		)
 
 
