@@ -33,6 +33,10 @@ for path_cpl in sys.argv[1:]:
 		print("Has extensions:")
 		for ext in imf_cpl.extension_properties:
 			print(f"\t{ext}")
+	if imf_cpl.essence_descriptors:
+		print("Has essence descriptors:")
+		for ess in imf_cpl.essence_descriptors:
+			print(f"\t{ess}")
 	
 	
 

@@ -361,6 +361,23 @@ class ContentVersion:
 @dataclasses.dataclass(frozen=True)
 class EssenceDescriptor:
 	"""A description of an essence"""
+	
+	id:uuid.UUID
+	"""Unique identifier for this CPL encoded as a urn:UUID [RFC 4122]"""
+
+	raw_xml:et.Element
+	"""The raw XML data for this essence descriptor"""
+
+	@classmethod
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "EssenceDescriptor":
+		"""Parse an essence descriptor from its XML"""
+		id = uuid.UUID(xml.find("Id",ns).text)
+		raw_xml = xml
+		return cls(
+			id=id,
+			raw_xml=raw_xml
+		)
+
 
 @dataclasses.dataclass(frozen=True)
 class ContentMaturityRating:
@@ -459,6 +476,7 @@ class EditRate:
 	"""A rational edit rate"""
 	
 	edit_rate:tuple[int,int]
+	"""The edit rate as a ratio of two integers"""
 
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "EditRate":
@@ -618,6 +636,9 @@ class Cpl:
 		# Extensions
 		extensions_list = [ExtensionProperty.from_xml(prop,ns) for prop in xml.findall("ExtensionProperties/*",ns)]
 
+		# Essence descriptors
+		essence_descriptors = [EssenceDescriptor.from_xml(ess,ns) for ess in xml.findall("EssenceDescriptorList/EssenceDescriptor",ns)]
+
 		# Signer and signature
 		# TODO: Definitely needs testing
 		security = xsd_optional_security(
@@ -644,7 +665,8 @@ class Cpl:
 			content_versions=content_versions,
 			locales=locale_list,
 			extension_properties=extensions_list,
-			security=security
+			security=security,
+			essence_descriptors=essence_descriptors
 		)
 	
 	@property
