@@ -361,6 +361,7 @@ class ContentVersion:
 @dataclasses.dataclass(frozen=True)
 class EssenceDescriptor:
 	"""A description of an essence"""
+	# TODO: I'm sure we'll need to subclass this at some point for common types
 	
 	id:uuid.UUID
 	"""Unique identifier for this CPL encoded as a urn:UUID [RFC 4122]"""
