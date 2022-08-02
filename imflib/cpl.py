@@ -269,9 +269,16 @@ class MarkerSequence(Sequence):
 @dataclasses.dataclass(frozen=True)
 class Segment:
 	"""A CPL segment"""
-	id:str
-	_sequences:typing.List[Sequence]
-	annotation:str=""
+
+	id:uuid.UUID
+	"""UUID of the segment"""
+	
+	annotation:typing.Optional[UserText]=None
+	"""Description of this segment"""
+
+	_sequences:typing.List[Sequence]=dataclasses.field(default_factory=list())
+	"""An internal list of sequences belonging to this segment"""
+	# TODO: Look into getting and setting sequences list; the underscore in the constructor is weird
 
 	# References
 	_src_cpl:typing.Optional["Cpl"]=None
@@ -280,13 +287,9 @@ class Segment:
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]) -> "Segment":
 
-		id = xml.find("Id",ns).text
-		annotation = xsd_optional_string(xml.find("Annotation",ns))
-
-		sequence_list = list()
-
-		for sequence in xml.find("SequenceList", ns):
-			sequence_list.append(Sequence.from_xml(sequence,ns))
+		id = uuid.UUID(xml.find("Id",ns).text)
+		annotation = xsd_optional_usertext(xml.find("Annotation",ns))
+		sequence_list = [Sequence.from_xml(sequence,ns) for sequence in xml.find("SequenceList",ns)]
 
 		return cls(
 			id=id,
@@ -302,7 +305,9 @@ class Segment:
 		return reslist
 	
 	@property
-	def sequences(self) -> typing.Iterable["Sequence"]:
+	def sequences(self) -> typing.Iterator["Sequence"]:
+		"""A list of sequences belonging to this segment"""
+
 		rel_offset = 0
 		for seq in self._sequences:
 			yield dataclasses.replace(
@@ -340,7 +345,7 @@ class ContentVersion:
 	label:UserText
 	"""Description of the version of the content"""
 
-	additional:list[et.Element]=dataclasses.field(default_factory=list)
+	additional_properties:list[et.Element]=dataclasses.field(default_factory=list)
 	"""Additional properties of this content version"""
 	# TODO: Investigate handling of xs:any tags, ambiguous in spec
 
@@ -356,7 +361,11 @@ class ContentVersion:
 			xml.find("LabelText",ns)
 		}
 		additional_properties = [prop for prop in xml if prop not in standard]
-		return cls(id, label, additional_properties)
+		return cls(
+			id=id,
+			label=label,
+			additional_properties=additional_properties
+		)
 
 @dataclasses.dataclass(frozen=True)
 class EssenceDescriptor:

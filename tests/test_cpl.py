@@ -37,6 +37,9 @@ for path_cpl in sys.argv[1:]:
 		print("Has essence descriptors:")
 		for ess in imf_cpl.essence_descriptors:
 			print(f"\t{ess}")
+	print(f"Contains {len(list(imf_cpl.segments))} segments:")
+	for segment in imf_cpl.segments:
+		print(f"\t{segment.id}: {len(list(segment.sequences))} sequences")
 	
 	
 
