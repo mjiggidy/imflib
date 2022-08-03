@@ -1,7 +1,8 @@
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime, uuid
 from posttools import timecode
-from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_integer, xsd_optional_bool, xsd_optional_usertext, xsd_optional_security, UserText, Security
+from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_integer, xsd_optional_bool, xsd_optional_usertext, xsd_optional_security
+from imflib import UserText, Security
 
 pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 
@@ -168,9 +169,15 @@ class MarkerResource(Resource):
 @dataclasses.dataclass(frozen=True)
 class Sequence:
 	"""A sequence within a segment"""
-	id:str
+
+	id:uuid.UUID
+	"""UUID of the sequence"""
+
 	track_id:str
-	_resources:typing.List[Resource]
+	"""UUID of the virtual track to which the sequence belongs"""
+
+	_resources:typing.List[Resource]=dataclasses.field(default_factory=list())
+	# TODO: Look into getting and setting resources list; the underscore in the constructor is weird
 
 	# References
 	_src_segment:typing.Optional["Segment"]=None
@@ -207,7 +214,8 @@ class Sequence:
 	@property
 	def duration(self) -> int:
 		"""Duration in frames for now"""
-		# The timeline of a Sequence shall consist of the concatenation, without gaps, of the timeline of all its Resources in the order they appear in the ResourceList element
+		# The timeline of a Sequence shall consist of the concatenation, without gaps, of the timeline of all its Resources
+		# in the order they appear in the ResourceList element
 		return sum(res.duration for res in self.resources)
 
 	@property
