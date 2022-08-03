@@ -10,18 +10,53 @@ pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 class Resource(abc.ABC):
 	"""A BaseResource XSD within a sequence"""
 
-	id:str
+
+	id:uuid.UUID
+	"""UUID of the sequence"""
+	# TODO: No two resources shall have teh same id unless they are identical (6.12)
+
 	intrinsic_duration:int
+	"""The native duration of the full source asset, in resource edit units"""
+
+	annotation:typing.Optional[UserText]=None
+	"""Description of this resource"""
+
+	edit_rate:typing.Optional["EditRate"]=None
+	"""The edit rate of this resource"""
+	# TODO: If the EditRate element is absent, the Edit Rate of the Resource shall be equal to the Composition Edit Rate
+
+	entry_point:int=0
+	"""The desired start of the playable region (in-point) in resource edit units"""
+	# TODO: Spec does not contrain entry_point to be < instrinsic duration, but seems like it should be?
 	
-	annotation:typing.Optional[str]
-	edit_rate:typing.Optional["EditRate"]
-	entry_point:typing.Optional[int]
-	source_duration:typing.Optional[int]
-	repeat_count:typing.Optional[int]
+	source_duration:typing.Optional[int]=None
+	"""The desired duration of the playable region past the `entry_point`, in resource edit units"""
+
+	repeat_count:int=1
+	"""The number of times the playable region is to be repeated"""
 
 	# References
-	_src_sequence:typing.Optional["Sequence"]
-	_src_offset:int
+	_src_sequence:typing.Optional["Sequence"]=dataclasses.field(default_factory=list)
+	_src_offset:int=0
+
+	def __post_init__(self):
+		"""Validate additional constraints per st2067-3-2020 (6.11)"""
+
+		# Generated values
+		# If absent, it shall be equal to IntrinsicDuration – EntryPoint.
+		if self.source_duration is None: self.source_duration = self.intrinsic_duration-self.entry_point
+		
+		# Non-negative integers
+		if self.intrinsic_duration < 0: raise ValueError("The intrinsic duration must be provided as a non-negative integer")
+		if self.entry_point < 0: raise ValueError("The entry point must be provided as a non-negative integer")
+		if self.source_duration < 0: raise ValueError("The source duration must be provided as a non-negative integer")
+
+		# Positive integers
+		if self.repeat_count < 1: raise ValueError("The repeat count must be provided as a positive integer")
+
+		# Bound integers
+		if self.source_duration > (self.intrinsic_duration-self.entry_point):
+			raise ValueError("The source duration must not exceed IntrinsicDuration-EntryPoint")
 
 	@property
 	def duration(self) -> int:
@@ -262,9 +297,11 @@ class MainAudioSequence(Sequence):
 # TODO: MarkerSequence is untested
 class MarkerSequence(Sequence):
 	"""Marker sequence"""
+
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
 		"""Parse from """
+
 		id = xml.find("Id",ns).text
 		track_id = xml.find("TrackId",ns).text
 		
