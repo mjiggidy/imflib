@@ -1,11 +1,14 @@
 API
 ===
+
+.. currentmodule:: imflib
+
 .. autosummary::
    :toctree: generated
 
-   imflib.imf
-   imflib.assetmap
-   imflib.pkl
-   imflib.cpl
-   imflib.opl
-   imflib.scm
+   imf
+   assetmap
+   pkl
+   cpl
+   opl
+   scm
