@@ -1,7 +1,4 @@
 API
 ===
 
-.. autosummary::
-   :toctree: generated
-   
-   imflib
+.. automodule:: imflib.scm
