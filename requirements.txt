@@ -1,2 +1,1 @@
--e git+https://github.com/mjiggidy/imflib.git@421b3c54df3d8b70623faea1f19d397498a1da53#egg=imflib
--e git+https://github.com/mjiggidy/posttools.git@e5e5728bcedf9f76eb2bcfc2368ed1d33d93709c#egg=posttools
+-e git+https://github.com/mjiggidy/posttools.git@9f1144f2b1baa3b371a8c0e1813e414d6c8a56ed#egg=posttools
