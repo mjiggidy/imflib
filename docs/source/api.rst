@@ -1,7 +1,7 @@
 API
 ===
 
-.. automodule:: imflib.cpl
-   :member:
+.. automodule:: imflib.scm
+   :members:
    :undoc-members:
    :show-inheritance:
