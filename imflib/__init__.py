@@ -1,4 +1,4 @@
-__all__ = ["assetmap","pkl","cpl","imf","opl"]
+__all__ = ["assetmap","pkl","cpl","imf","opl","scm"]
 
 import datetime, re, typing, dataclasses
 import xml.etree.ElementTree as et
