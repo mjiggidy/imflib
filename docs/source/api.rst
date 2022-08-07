@@ -4,11 +4,5 @@ API
 .. currentmodule:: imflib
 
 .. autosummary::
+   :recursive:
    :toctree: generated
-
-   imf
-   assetmap
-   pkl
-   cpl
-   opl
-   scm
