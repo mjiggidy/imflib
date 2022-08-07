@@ -269,7 +269,7 @@ class Sequence:
 	id:uuid.UUID
 	"""UUID of the sequence"""
 
-	track_id:str
+	track_id:uuid.UUID
 	"""UUID of the virtual track to which the sequence belongs"""
 
 	_resources:typing.List[Resource]=dataclasses.field(default_factory=list())
@@ -332,8 +332,8 @@ class MainImageSequence(Sequence):
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
 		"""Parse from XML"""
 		
-		id = xml.find("Id",ns).text
-		track_id = xml.find("TrackId",ns).text
+		id = uuid.UUID(xml.find("Id",ns).text)
+		track_id = uuid.UUID(xml.find("TrackId",ns).text)
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
@@ -346,8 +346,8 @@ class MainAudioSequence(Sequence):
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MainImageSequence":
 		"""Parse from XML"""
-		id = xml.find("Id",ns).text
-		track_id = xml.find("TrackId",ns).text
+		id = uuid.UUID(xml.find("Id",ns).text)
+		track_id = uuid.UUID(xml.find("TrackId",ns).text)
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
@@ -363,8 +363,8 @@ class MarkerSequence(Sequence):
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
 		"""Parse a Marker sequence from XML"""
 
-		id = xml.find("Id",ns).text
-		track_id = xml.find("TrackId",ns).text
+		id = uuid.UUID(xml.find("Id",ns).text)
+		track_id = uuid.UUID(xml.find("TrackId",ns).text)
 		
 		resource_list = list()
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
@@ -446,7 +446,7 @@ class Segment:
 class ContentVersion:
 	"""A version of the content represented in the CPL"""
 
-	id:str
+	id:uuid.UUID
 	"""UUID of the content represented by the CPL"""
 
 	label:UserText
@@ -460,7 +460,7 @@ class ContentVersion:
 	def from_xml(cls, xml:et.ElementTree, ns:typing.Optional[dict]=None)->"ContentVersion":
 		"""Parse a ContentVersion from XML"""
 		
-		id = xml.find("Id",ns).text
+		id = uuid.UUID(xml.find("Id",ns).text)
 		label = UserText.from_xml(xml.find("LabelText",ns))
 
 		# TODO: Seems kind of hacky here
