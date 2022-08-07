@@ -1,10 +1,11 @@
 API Reference
 =============
 
-.. automodule:: imflib
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. autosummary:: 
+	:recursive:
+	:toctree: generated
+	
+	imflib
 
 
 .. toctree::
