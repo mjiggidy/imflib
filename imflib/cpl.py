@@ -5,12 +5,13 @@ Based on st-2067-3-2020: https://ieeexplore.ieee.org/document/9097510/
 The Composition Playlist (:class:`Cpl`\) combines the assets in an IMF to a timeline. 
 A CPL is divided into one or more :class:`Segment`\s.
 
-Each :Segment: contains one or more :class:`Sequence`\s, which are more or less analogous to tracks in a traditional NLE.
+Each :class:`Segment` contains one or more :class:`Sequence`\s, which are more or less analogous to tracks in a traditional NLE.
 
 Each :class:`Sequence`\ references one or more :class:`Resource`\s, which are analogous to subclips in a traditional NLE.
 
 :class:`Resource`\s comprised of external files are :class:`TrackFileResource`\s.  The file path to each :class:`TrackFileResouce`\s can be 
-resolved by cross-referencing the UUID in :attr:`TrackFileResource.track_file_id` with the UUID in :attr:`imflib.Pkl.Asset.id`\.
+resolved by cross-referencing the UUID in :attr:`TrackFileResource.track_file_id` with the UUID in :attr:`imflib.pkl.Asset.id` and 
+:attr:`imflib.assetmap.Asset.id`\.
 """
 
 import xml.etree.ElementTree as et
