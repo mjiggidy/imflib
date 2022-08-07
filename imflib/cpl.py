@@ -1,3 +1,14 @@
+"""`CPL` and its related classes
+Based on st-2067-3-2020: https://ieeexplore.ieee.org/document/9097510/
+
+The Composition Playlist (`CPL`\) combines the assets in an IMF to a timeline. 
+A CPL is divided into one or more `Segment`\s.
+
+Each `Segment` contains one or more `Sequence`\s, which are more or less analogous to tracks in a traditional NLE.
+
+Each `Sequence` references one or more `Resources`\s, which are analogous to subclips in a traditional NLE.
+"""
+
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime, uuid
 from posttools import timecode
