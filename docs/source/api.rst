@@ -1,7 +1,9 @@
-API
-===
+API Reference
+=============
 
-.. automodule:: imflib.scm
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. toctree::
+	assetmap
+	pkl
+	cpl
+	opl
+	scm
