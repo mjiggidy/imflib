@@ -7,3 +7,10 @@ API Reference
 	
 	imflib
 
+
+.. toctree::
+	assetmap
+	pkl
+	cpl
+	opl
+	scm
