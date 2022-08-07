@@ -1,8 +1,9 @@
 API
 ===
 
-.. automodule:: imflib
+.. automodule::
    :toctree: generated
+   imflib
    :members:
    :undoc-members:
    :show-inheritance:
