@@ -3,7 +3,6 @@ API
 .. autosummary::
    :toctree: generated
 
-   imflib
    imflib.imf
    imflib.assetmap
    imflib.pkl
