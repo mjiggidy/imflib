@@ -72,7 +72,7 @@ class Pkl:
 	"""The facility or system that created this PKL"""
 
 	assets:list["Asset"]
-	"""The list of `Asset`s contained in this package"""
+	"""The list of `Asset` s contained in this package"""
 
 	annotation_text:typing.Optional[UserText]=""
 	"""Optional description of the distribution package"""

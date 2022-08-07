@@ -31,7 +31,7 @@ class AssetMap:
 	"""The person or company that issued this asset map"""
 
 	assets:list["Asset"]
-	"""The list of mapped `Asset`s"""
+	"""The list of mapped `Asset` s"""
 
 	annotation_text:typing.Optional[UserText]=None
 	"""Optional description of this asset map"""
@@ -118,7 +118,7 @@ class Asset:
 
 
 	chunks:list["Chunk"]
-	"""List of `Chunk`s spanned by the file"""
+	"""List of `Chunk` segments spanned by the file"""
 	
 	is_packing_list:typing.Optional[bool]=False
 	"""Whether the asset is a Packing List (PKL)"""

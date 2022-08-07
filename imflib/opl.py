@@ -125,7 +125,7 @@ class Opl:
 	"""Datetime this OPL was issued"""
 
 	aliases:set[Alias]
-	"""A set of unique `Alias` elements which define additional synonyms for `Handle`s"""
+	"""A set of unique `Alias` elements which define additional synonyms for `Handle` s"""
 
 	macros:list[Macro]
 	"""An ordered list of `Macro` elements"""
@@ -136,7 +136,7 @@ class Opl:
 	"""The person or company that issued this OPL"""
 
 	extension_properties:list[ExtensionProperty]=dataclasses.field(default_factory=list)
-	"""An unordered list of `ExtensionProperty`s which may be used by applications to add descriptive metadata to the OPL"""
+	"""An unordered list of `ExtensionProperty` s which may be used by applications to add descriptive metadata to the OPL"""
 	# TODO: Unordered yes; unique... maybe?  So a set instead of a list perhaps?
 
 	creator:typing.Optional[UserText]=None
