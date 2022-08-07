@@ -1,7 +1,7 @@
 API
 ===
 
-.. automodule::imflib.cpl
+.. automodule::imflib
    :toctree: generated
    :members:
    :undoc-members:
