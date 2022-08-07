@@ -10,7 +10,7 @@ Each :Segment: contains one or more :class:`Sequence`\s, which are more or less 
 Each :class:`Sequence`\ references one or more :class:`Resource`\s, which are analogous to subclips in a traditional NLE.
 
 :class:`Resource`\s comprised of external files are :class:`TrackFileResource`\s.  The file path to each :class:`TrackFileResouce`\s can be 
-resolved by cross-referencing the UUID in :attr:`TrackFileResource.track_file_id` with the UUID in :attr:imflib.Pkl.Asset.id`\.
+resolved by cross-referencing the UUID in :attr:`TrackFileResource.track_file_id` with the UUID in :attr:`imflib.Pkl.Asset.id`\.
 """
 
 import xml.etree.ElementTree as et
