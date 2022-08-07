@@ -1,13 +1,7 @@
 API
 ===
 
-.. autosummary::
-   :recursive:
-   :toctree: generated
-
-   imflib
-
-.. automodule:: imflib.assetmap
+.. automodule:: imflib
    :member:
    :undoc-members:
    :show-inheritance:
