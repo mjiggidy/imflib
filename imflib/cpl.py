@@ -1,12 +1,16 @@
-"""`CPL` and its related classes
+"""`Composition Playlist` and its related classes
+
 Based on st-2067-3-2020: https://ieeexplore.ieee.org/document/9097510/
 
-The Composition Playlist (`CPL`\) combines the assets in an IMF to a timeline. 
-A CPL is divided into one or more `Segment`\s.
+The Composition Playlist (:Cpl:\) combines the assets in an IMF to a timeline. 
+A CPL is divided into one or more :Segment:\s.
 
-Each `Segment` contains one or more `Sequence`\s, which are more or less analogous to tracks in a traditional NLE.
+Each :Segment: contains one or more :Sequence:\s, which are more or less analogous to tracks in a traditional NLE.
 
-Each `Sequence` references one or more `Resources`\s, which are analogous to subclips in a traditional NLE.
+Each :Sequence: references one or more :Resource:\s, which are analogous to subclips in a traditional NLE.
+
+:Resource:s comprised of external files are :TrackFileResource:\s.  The file path to each :TrackFileResouce:\s can be 
+resolved by cross-referencing the UUID in :TrackFileResource.track_file_id: with the UUID in :imflib.Pkl.Asset.id:\.
 """
 
 import xml.etree.ElementTree as et
@@ -25,8 +29,8 @@ class Resource(abc.ABC):
 	# of fields with default arguments and dataclass inheritence pre-3.10
 
 	id:uuid.UUID
-	"""UUID of the sequence"""
-	# TODO: No two resources shall have teh same id unless they are identical (6.12)
+	"""UUID of the resource"""
+	# TODO: No two resources shall have the same id unless they are identical (6.12)
 
 	intrinsic_duration:int
 	"""The native duration of the full source asset, in resource edit units"""
@@ -100,7 +104,6 @@ class Resource(abc.ABC):
 @dataclasses.dataclass(frozen=True)
 class TrackFileResource(Resource):
 	"""A file-based resource"""
-
 
 	source_encoding:uuid.UUID
 	"""UUID of a known `EssenceDescriptor`"""
