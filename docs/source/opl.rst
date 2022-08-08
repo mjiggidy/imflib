@@ -7,3 +7,6 @@ st2067-100a-2014: Output Profile List
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. toctree::
+   imflib.colorschemes
