@@ -9,4 +9,4 @@ st2067-100a-2014: Output Profile List
    :show-inheritance:
 
 .. toctree::
-   imflib.colorschemes
+   colorschemes
