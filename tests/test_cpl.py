@@ -8,11 +8,7 @@ for path_cpl in sys.argv[1:]:
 	print("\n---\n")
 	print(f"{path_cpl}")
 	
-	try:
-		imf_cpl = cpl.Cpl.from_file(path_cpl)
-	except Exception as e:
-		print(f"Skipping: {e}")
-		continue
+	imf_cpl = cpl.Cpl.from_file(path_cpl)
 	
 	print(f"CPL Name: {imf_cpl.title}")
 	print(f"Issued {imf_cpl.issue_date} by {imf_cpl.issuer} using {imf_cpl.creator}")
@@ -40,6 +36,8 @@ for path_cpl in sys.argv[1:]:
 	print(f"Contains {len(list(imf_cpl.segments))} segments:")
 	for segment in imf_cpl.segments:
 		print(f"\t{segment.id}: {len(list(segment.sequences))} sequences")
+		for sequence in segment.sequences:
+			print(f"\t\t{type(sequence)}: {len(list(sequence.resources))} resources")
 	
 	
 

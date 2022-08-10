@@ -14,6 +14,7 @@ resolved by cross-referencing the UUID in :attr:`TrackFileResource.track_file_id
 :attr:`imflib.assetmap.Asset.id`\.
 """
 
+from xml.dom.minidom import Element
 import xml.etree.ElementTree as et
 import dataclasses, typing, re, abc, datetime, uuid
 from posttools import timecode
@@ -284,6 +285,8 @@ class Sequence:
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "Sequence":
 		"""Parse from XML"""
 
+		# TODO: Maybe be more sensitive to the namespaces
+
 		if xml.tag.endswith("MainImageSequence"):
 			return MainImageSequence.from_xml(xml, ns)
 		
@@ -292,6 +295,9 @@ class Sequence:
 		
 		elif xml.tag.endswith("MarkerSequence"):
 			return MarkerSequence.from_xml(xml, ns)
+		
+		elif xml.tag.endswith("ISXDSequence"):
+			return ISXDSequence.from_xml(xml, ns)
 		
 		# TODO: Implement additional
 		else:
@@ -363,7 +369,7 @@ class MarkerSequence(Sequence):
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
 		"""Parse a Marker sequence from XML"""
-
+		print("Here")
 		id = uuid.UUID(xml.find("Id",ns).text)
 		track_id = uuid.UUID(xml.find("TrackId",ns).text)
 		
@@ -371,6 +377,31 @@ class MarkerSequence(Sequence):
 		for resource in xml.find("ResourceList",ns).findall("Resource",ns):
 			resource_list.append(MarkerResource.from_xml(resource, ns))
 
+		return cls(id=id, track_id=track_id, _resources=resource_list)
+
+class ISXDSequence(Sequence):
+	"""
+	SMPTE RDD 47-2018 isochronous sequence
+	
+	See: https://ieeexplore.ieee.org/document/8552735/
+	"""
+
+	@classmethod
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "ISXDSequence":
+		"""Parse ISXDSequence from XML"""
+
+#		if isinstance(ns, dict):
+#			ns.update({
+#				"":"http://www.dolby.com/schemas/RDD-47/2018",
+#				"cpl":"http://www.smpte-ra.org/schemas/2067-3/2016",
+#				"xs":"http://www.w3.org/2001/XMLSchema"
+#			})
+		
+		id = uuid.UUID(xml.find("Id",ns).text)
+		track_id = uuid.UUID(xml.find("TrackId",ns).text)
+
+		# NOTE: Each ISXDSequence element shall contain Resource elements of type TrackFileResourceType. (Sctn 6)
+		resource_list = [TrackFileResource.from_xml(resource,ns) for resource in xml.findall("ResourceList/Resource",ns)]
 		return cls(id=id, track_id=track_id, _resources=resource_list)
 
 @dataclasses.dataclass(frozen=True)
