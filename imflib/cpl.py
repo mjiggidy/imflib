@@ -24,7 +24,7 @@ from imflib import UserText, Security
 pat_nsextract = re.compile(r'^\{(?P<uri>.+)\}(?P<name>[a-z0-9]+)',re.I)
 
 @dataclasses.dataclass(frozen=True)
-class Resource(abc.ABC):
+class BaseResource(abc.ABC):
 	"""A BaseResource XSD within a sequence"""
 
 	# TODO: Omitting default values for now to mitigate the headache
@@ -55,8 +55,33 @@ class Resource(abc.ABC):
 	"""The number of times the playable region is to be repeated"""
 
 	# References
-	_src_sequence:typing.Optional["Sequence"]
-	_src_offset:int
+	_src_sequence:typing.Optional["Sequence"]=None
+	_src_offset:int=0
+
+	@classmethod
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "BaseResource":
+		
+		# BaseResource
+		id = uuid.UUID(xml.find("Id",ns).text)
+		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
+
+		
+		# BaseResource Optional
+		annotation = xsd_optional_usertext(xml.find("Annotation",ns))
+		edit_rate = EditRate.from_xml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
+		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns),0)
+		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
+		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 1)
+
+		return cls(
+			id=id,
+			intrinsic_duration=intrinsic_duration,
+			annotation=annotation,
+			edit_rate=edit_rate,
+			entry_point=entry_point,
+			source_duration=source_duration,
+			repeat_count=repeat_count
+		)
 
 	def __post_init__(self):
 		"""Validate additional constraints per st2067-3-2020 (6.11)"""
@@ -104,40 +129,31 @@ class Resource(abc.ABC):
 		)
 
 @dataclasses.dataclass(frozen=True)
-class TrackFileResource(Resource):
+class TrackFileResource(BaseResource):
 	"""A file-based resource"""
 
-	source_encoding:uuid.UUID
+	source_encoding:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
 	"""UUID of a known `EssenceDescriptor`"""
 
-	track_file_id:uuid.UUID
+	track_file_id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
 	"""UUID of the underlying track file"""
 	# TODO: No two Track Files shall have the same ID value unless they are identical. (6.12.2)
 
-	key_id:typing.Optional[uuid.UUID]
+	key_id:typing.Optional[uuid.UUID]=None
 	"""UUID of the key used to encrypt the track file, if encrpyted"""
 
 	# TODO: Base64 encode/decode hash?
-	hash:typing.Optional[str]
+	hash:typing.Optional[str]=None
 	"""Base64-encoded message digest of the track file"""
 
-	hash_algorithm:typing.Optional[str]
+	hash_algorithm:typing.Optional[str]=None
 	"""Name of the digest type used by the track file"""
 
 	@classmethod
-	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"ImageResource":
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"TrackFileResource":
 		"""Parse a file-based resource from XML"""
 
-		# BaseResource
-		id = uuid.UUID(xml.find("Id",ns).text)
-		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
-		
-		# BaseResource Optional
-		annotation = xsd_optional_usertext(xml.find("Annotation",ns))
-		edit_rate = EditRate.from_xml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
-		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns),0)
-		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
-		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 1)
+		base = super().from_xml(xml, ns)
 
 		# TrackFileResource
 		source_encoding = uuid.UUID(xml.find("SourceEncoding",ns).text)
@@ -149,21 +165,13 @@ class TrackFileResource(Resource):
 		hash_algorithm = xsd_optional_string(xml.find("HashAlgorithm",ns))
 
 
-		return cls(
-			id=id,
-			intrinsic_duration=intrinsic_duration,
-			annotation=annotation,
-			edit_rate=edit_rate,
-			entry_point=entry_point,
-			source_duration=source_duration,
-			repeat_count=repeat_count,
+		return dataclasses.replace(
+			base,
 			source_encoding=source_encoding,
 			track_file_id=track_file_id,
 			key_id=key_id,
 			hash=hash,
-			hash_algorithm=hash_algorithm,
-			_src_sequence=None,
-			_src_offset=0
+			hash_algorithm=hash_algorithm
 		)
 
 @dataclasses.dataclass(frozen=True)
@@ -193,26 +201,17 @@ class AudioResource(TrackFileResource):
 
 # TODO: Markers are untested (no samples available)
 @dataclasses.dataclass(frozen=True)
-class MarkerResource(Resource):
+class MarkerResource(BaseResource):
 	"""A CPL Marker"""
 
 	# TODO: The native duration of a MarkerResourceType instance, as indicated by the IntrinsicDuration element, 
 	# shall be set to any value equal or larger to the largest Offset value within all its Marker elements (6.13)
 
-	annotation:typing.Optional[UserText]
-	"""An internal description of the marker"""
-
-	label:"MarkerLabel"
-	"""The textual representation of the marker"""
-
-	offset:int
-	"""The offset from the beginning of the timeline, in resource edit units"""
-
 	@dataclasses.dataclass(frozen=True)
 	class MarkerLabel:
 		"""The marker label"""
 
-		label_text:str
+		label_text:str=""
 		"""The kind of marker"""
 		# TODO: Validate default against allowed types?
 
@@ -231,36 +230,26 @@ class MarkerResource(Resource):
 				scope=xml.attrib.get("scope","http://www.smpte-ra.org/schemas/2067-3/2013#standardmarkers")
 			)
 
+	label:MarkerLabel=MarkerLabel()
+	"""The textual representation of the marker"""
+
+	offset:int=0
+	"""The offset from the beginning of the timeline, in resource edit units"""
+
+
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerResource":
 		"""Parse a Marker resource from XML"""
 		
-		# BaseResource
-		id = uuid.UUID(xml.find("Id",ns).text)
-		intrinsic_duration = int(xml.find("IntrinsicDuration",ns).text)
-
-		# BaseResource Optional
-		annotation = xsd_optional_usertext(xml.find("Annotation",ns))
-		edit_rate = EditRate.from_xml(xml.find("EditRate",ns), ns) if xml.find("EditRate",ns) is not None else None
-		entry_point = xsd_optional_integer(xml.find("EntryPoint",ns),0)
-		source_duration = xsd_optional_integer(xml.find("SourceDuration",ns))
-		repeat_count = xsd_optional_integer(xml.find("RepeatCount",ns), 1)
+		base = super().from_xml(xml, ns)
 
 		label = cls.MarkerLabel.from_xml(xml.find("Label",ns))
 		offset = int(xml.find("Offset",ns).text)
 
-		return cls(
-			id=id,
-			intrinsic_duration=intrinsic_duration,
-			annotation=annotation,
-			edit_rate=edit_rate,
-			entry_point=entry_point,
-			source_duration=source_duration,
-			repeat_count=repeat_count,
+		return dataclasses.replace(
+			base,
 			label=label,
-			offset=offset,
-			_src_sequence=None,
-			_src_offset=0
+			offset=offset
 		)
 
 
@@ -274,7 +263,7 @@ class Sequence:
 	track_id:uuid.UUID
 	"""UUID of the virtual track to which the sequence belongs"""
 
-	_resources:typing.List[Resource]=dataclasses.field(default_factory=list())
+	_resources:typing.List[BaseResource]=dataclasses.field(default_factory=list())
 	# TODO: Look into getting and setting resources list; the underscore in the constructor is weird
 
 	# References
@@ -304,7 +293,7 @@ class Sequence:
 			raise NotImplementedError(f"Unknown/unsupported/scary sequence type: {xml.tag}")
 	
 	@property
-	def resources(self) -> typing.Iterator["Resource"]:
+	def resources(self) -> typing.Iterator["BaseResource"]:
 		rel_offset = 0
 		for res in self._resources:
 			yield dataclasses.replace(
@@ -437,7 +426,7 @@ class Segment:
 		)
 	
 	@property
-	def resources(self) -> typing.List[Resource]:
+	def resources(self) -> typing.List[BaseResource]:
 		reslist = list()
 		for seq in self.sequences:
 			reslist.extend(seq.resources)
@@ -843,7 +832,7 @@ class Cpl:
 				yield seq
 	
 	@property
-	def resources(self) -> typing.Iterator["Resource"]:
+	def resources(self) -> typing.Iterator["BaseResource"]:
 		for seq in self.sequences:
 			for res in seq.resources:
 				yield res
