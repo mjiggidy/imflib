@@ -9,6 +9,7 @@ API Reference
 
 
 .. toctree::
+	imflib
 	assetmap
 	pkl
 	cpl
