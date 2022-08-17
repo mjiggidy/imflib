@@ -1,15 +1,15 @@
 API Reference
 =============
-
-.. autosummary:: 
-	:recursive:
-	:toctree: generated
-	
-	imflib
+..
+	.. autosummary:: 
+		:recursive:
+		:toctree: generated
+		
+		imflib
 
 
 .. toctree::
-	imflib
+	.
 	assetmap
 	pkl
 	cpl
