@@ -3,7 +3,7 @@ imflib
 
 st2067: IMF
 
-.. automodule:: imflib
+.. automodule:: .
    :members:
    :undoc-members:
    :show-inheritance:
