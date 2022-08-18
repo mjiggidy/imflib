@@ -1,10 +1,11 @@
-Welcome to Lumache's documentation!
+Welcome to imflib's documentation!
 ===================================
 
-**Lumache** (/lu'make/) is a Python library for cooks and food lovers
-that creates recipes mixing random ingredients.
-It pulls data from the `Open Food Facts database <https://world.openfoodfacts.org/>`_
-and offers a *simple* and *intuitive* API.
+**imflib** is an unofficial Python library for reading and writing
+`SMPTE ST 2067 - Interoperable Master Format (IMF)<https://www.smpte.org/standards/st2067>`.
+It is not yet complete.
+
+See the library in progress on Github: https://github.com/mjiggidy/imflib
 
 Check out the :doc:`usage` section for further information, including
 how to :ref:`installation` the project.
