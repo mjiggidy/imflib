@@ -19,6 +19,7 @@ class UserText:
 
 	text:str=""
 	"""Human-readable string"""
+
 	language:str="en"
 	"""Language of `text`"""
 
@@ -36,6 +37,15 @@ class UserText:
 			text=text,
 			language=lang
 		)
+	
+	def to_xml(self) -> et.Element:
+		"""Create an XML representation of xs:UserText"""
+
+		root = et.Element("UserText")
+		root.set("language", str(self.language))
+		root.text = str(self.text)
+
+		return root
 
 # TODO: Placeholder data structure for now, may need to replace with an external dependency
 # TODO: Need to even get some IMFs that are signed.  Never seen one.
@@ -91,6 +101,17 @@ def xsd_datetime_to_datetime(xsd_datetime:str)->datetime:
 		microsecond = int(match_date.group("second").split('.')[1] if '.' in match_date.group("second") else 0),
 		tzinfo      = tz_delta
 	)
+
+def datetime_to_xsd_datetime(dt:datetime.datetime) -> str:
+	"""Return an XML representation of a DateTime"""
+
+	# TODO: Implement fractional seconds (to two decimal places)
+	# TODO: Include timezone offsete
+	# NOTE: This is very temp and very broken
+	return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+
 
 def xsd_optional_string(xml:typing.Optional[et.Element], default_value:str="") -> typing.Union[str,None]:
 	"""Return a string that may be optionally defined in the XML"""

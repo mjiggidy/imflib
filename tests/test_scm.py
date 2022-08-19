@@ -1,5 +1,5 @@
 from imflib import scm
-import sys
+import sys, xml.etree.ElementTree
 
 if __name__ == "__main__":
 	
@@ -22,3 +22,8 @@ if __name__ == "__main__":
 		print(f"Contains asset-to-CPL mappings for {len(map.assets)} sidecar asset(s):")
 		for asset in map.assets:
 			print(f"\t{asset}")
+
+		print("Re-written to XML:")
+		print("==================")
+
+		map.to_file(sys.stdout)
