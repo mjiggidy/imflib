@@ -30,28 +30,28 @@ class BaseResource(abc.ABC):
 	# TODO: Omitting default values for now to mitigate the headache
 	# of fields with default arguments and dataclass inheritence pre-3.10
 
-	id:uuid.UUID
-	"""UUID of the resource"""
-	# TODO: No two resources shall have the same id unless they are identical (6.12)
-
 	intrinsic_duration:int
 	"""The native duration of the full source asset, in resource edit units"""
 
-	annotation:typing.Optional[UserText]    #=None
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""UUID of the resource"""
+	# TODO: No two resources shall have the same id unless they are identical (6.12)
+
+	annotation:typing.Optional[UserText]=None
 	"""Description of this resource"""
 
-	edit_rate:typing.Optional["EditRate"]   #=None
+	edit_rate:typing.Optional["EditRate"]=None
 	"""The edit rate of this resource"""
 	# TODO: If the EditRate element is absent, the Edit Rate of the Resource shall be equal to the Composition Edit Rate
 
-	entry_point:int                         #=0
+	entry_point:int=0
 	"""The desired start of the playable region (in-point) in resource edit units"""
 	# TODO: Spec does not contrain entry_point to be < instrinsic duration, but seems like it should be?
 	
-	source_duration:typing.Optional[int]    #=None
+	source_duration:typing.Optional[int]=None
 	"""The desired duration of the playable region past the `entry_point`, in resource edit units"""
 
-	repeat_count:int                        #=1
+	repeat_count:int=1
 	"""The number of times the playable region is to be repeated"""
 
 	# References
@@ -184,7 +184,6 @@ class ImageResource(TrackFileResource):
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "ImageResource":
 		"""Parse an image resource from XML"""
 		res = super().from_xml(xml,ns)
-		# I am surprised this just works
 		return res
 	
 @dataclasses.dataclass(frozen=True)
@@ -230,7 +229,7 @@ class MarkerResource(BaseResource):
 				scope=xml.attrib.get("scope","http://www.smpte-ra.org/schemas/2067-3/2013#standardmarkers")
 			)
 
-	label:MarkerLabel=MarkerLabel()
+	label:MarkerLabel=dataclasses.field(default_factory=MarkerLabel)
 	"""The textual representation of the marker"""
 
 	offset:int=0
@@ -257,10 +256,10 @@ class MarkerResource(BaseResource):
 class Sequence:
 	"""A sequence within a segment"""
 
-	id:uuid.UUID
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
 	"""UUID of the sequence"""
 
-	track_id:uuid.UUID
+	track_id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
 	"""UUID of the virtual track to which the sequence belongs"""
 
 	_resources:typing.List[BaseResource]=dataclasses.field(default_factory=list())
@@ -320,7 +319,6 @@ class Sequence:
 			duration = tc_duration
 		)
 
-
 class MainImageSequence(Sequence):
 	"""An XSD MainImageSequenceType from IMF Core Constraints"""
 
@@ -358,7 +356,7 @@ class MarkerSequence(Sequence):
 	@classmethod
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None) -> "MarkerSequence":
 		"""Parse a Marker sequence from XML"""
-		print("Here")
+
 		id = uuid.UUID(xml.find("Id",ns).text)
 		track_id = uuid.UUID(xml.find("TrackId",ns).text)
 		
@@ -396,12 +394,12 @@ class ISXDSequence(Sequence):
 @dataclasses.dataclass(frozen=True)
 class Segment:
 	"""A CPL segment"""
-
-	id:uuid.UUID
-	"""UUID of the segment"""
 	
 	annotation:typing.Optional[UserText]=None
 	"""Description of this segment"""
+
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""UUID of the segment"""
 
 	_sequences:typing.List[Sequence]=dataclasses.field(default_factory=list())
 	"""An internal list of sequences belonging to this segment"""
@@ -467,11 +465,11 @@ class Segment:
 class ContentVersion:
 	"""A version of the content represented in the CPL"""
 
-	id:uuid.UUID
-	"""UUID of the content represented by the CPL"""
-
 	label:UserText
 	"""Description of the version of the content"""
+
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""UUID of the content represented by the CPL"""
 
 	additional_properties:list[et.Element]=dataclasses.field(default_factory=list)
 	"""Additional properties of this content version"""
@@ -501,7 +499,7 @@ class EssenceDescriptor:
 	"""A description of an essence"""
 	# TODO: I'm sure we'll need to subclass this at some point for common types
 	
-	id:uuid.UUID
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
 	"""Unique identifier for this CPL encoded as a urn:UUID [RFC 4122]"""
 
 	descriptor_data:list[et.Element]=dataclasses.field(default_factory=list())
@@ -648,7 +646,7 @@ class ContentKind:
 	# TODO: Validate default against allowed types?
 
 	scope:typing.Optional[str]="http://www.smpte-ra.org/schemas/2067-3/2013#content-kind"
-	"""The defined set of possible kinds"""
+	"""The defined set of possible `kind` values"""
 
 	def __str__(self) -> str:
 		return self.kind
@@ -666,19 +664,19 @@ class ContentKind:
 class Cpl:
 	"""An IMF Composition Playlist"""
 
-	id:uuid.UUID
-	"""Unique identifier for this CPL encoded as a urn:UUID [RFC 4122]"""
-
-	issue_date:datetime.datetime
-	"""Datetime this asset map was issued"""
-
 	title:UserText
 	"""The title of the content in this CPL"""
 
 	edit_rate:EditRate
 	"""The granularity of time-related parameters used in this CPL"""
 
-	_segments:list["Segment"]
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""Unique identifier for this CPL encoded as a urn:UUID [RFC 4122]"""
+
+	issue_date:datetime.datetime=dataclasses.field(default_factory=datetime.datetime.now)
+	"""Datetime this asset map was issued"""
+
+	_segments:list["Segment"]=dataclasses.field(default_factory=list)
 	
 	annotation:typing.Optional[UserText]=None
 	"""Optional description of this CPL"""

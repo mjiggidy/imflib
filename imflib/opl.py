@@ -68,6 +68,14 @@ MACRO_TYPES = {
 	"PresetMacroType":PresetMacro
 }
 
+@dataclasses.dataclass(frozen=True)
+class Handle:
+	"""TODO"""
+
+	@classmethod
+	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=False) -> "Handle":
+		return cls()
+
 
 @dataclasses.dataclass(frozen=True)
 class Alias:
@@ -115,19 +123,19 @@ class ExtensionProperty:
 class Opl:
 	"""An IMF Output Profile List"""
 
-	id:uuid.UUID
-	"""Unique identifier for this OPL; encoded as a urn:UUID [RFC 4122]"""
-
 	cpl_id:uuid.UUID
 	"""Existing UUID of the CPL upon which this OPL operates; encoded as a urn:UUID [RFC 4122]"""
 
-	issue_date:datetime.datetime
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""Unique identifier for this OPL; encoded as a urn:UUID [RFC 4122]"""
+
+	issue_date:datetime.datetime=dataclasses.field(default_factory=datetime.datetime.now)
 	"""Datetime this OPL was issued"""
 
-	aliases:set[Alias]
+	aliases:set[Alias]=dataclasses.field(default_factory=set)
 	"""A set of unique `Alias` elements which define additional synonyms for `Handle` s"""
 
-	macros:list[Macro]
+	macros:list[Macro]=dataclasses.field(default_factory=list)
 	"""An ordered list of `Macro` elements"""
 	# TODO: Per st2067-100-2014: "Multiple Macro elements may have the same type but no two Macro elements shall have the same Name value."
 

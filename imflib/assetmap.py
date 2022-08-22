@@ -16,25 +16,25 @@ from imflib import xsd_datetime_to_datetime, xsd_optional_usertext, xsd_optional
 class AssetMap:
 	"""An Asset Map component of an IMF package"""
 
-	id:uuid.UUID
-	"""Unique identifier for this asset map encoded as a urn:UUID [RFC 4122]"""
-
 	creator:UserText
 	"""The facility or system that created this asset map"""
-
-	volume_count:int	# TODO: Per SMPTE 0429-9-2014 update, "Volume Count shall be 1."  So uh...
-	"""Total number of volumes referenced by this asset map"""
-
-	issue_date:datetime.datetime
-	"""Datetime this asset map was issued"""
 
 	issuer:UserText
 	"""The person or company that issued this asset map"""
 
-	assets:list["Asset"]
+	id:uuid.UUID = dataclasses.field(default_factory=uuid.uuid4)
+	"""Unique identifier for this asset map encoded as a urn:UUID [RFC 4122]"""
+
+	volume_count:int = 1	# TODO: Per SMPTE 0429-9-2014 update, "Volume Count shall be 1."  So uh...
+	"""Total number of volumes referenced by this asset map"""
+
+	issue_date:datetime.datetime = dataclasses.field(default_factory=datetime.datetime.now)
+	"""Datetime this asset map was issued"""
+
+	assets:list["Asset"] = dataclasses.field(default_factory=list)
 	"""The list of mapped `Asset` s"""
 
-	annotation_text:typing.Optional[UserText]=None
+	annotation_text:typing.Optional[UserText] = None
 	"""Optional description of this asset map"""
 
 	@classmethod
@@ -93,7 +93,7 @@ class AssetMap:
 class VolumeIndex:
 	"""A `VolumeIndex` file required only in multi-volume packages"""
 
-	index:int
+	index:int = 1
 	"""The index of this volume as referenced by the `AssetMap`"""
 
 	@classmethod
@@ -114,17 +114,17 @@ class VolumeIndex:
 class Asset:
 	"""An Asset as defined in an IMF AssetMap"""
 
-	id:uuid.UUID
+	id:uuid.UUID = dataclasses.field(default_factory=uuid.uuid4)
 	"""Unique package identifier encoded as a urn:UUID [RFC 4122]"""
 
 
-	chunks:list["Chunk"]
+	chunks:list["Chunk"] = dataclasses.field(default_factory=list)
 	"""List of `Chunk` segments spanned by the file"""
 	
-	is_packing_list:typing.Optional[bool]=False
+	is_packing_list:typing.Optional[bool] = False
 	"""Whether the asset is a Packing List (PKL)"""
 
-	annotation_text:typing.Optional[UserText]=None
+	annotation_text:typing.Optional[UserText] = None
 	"""Optional description of this asset"""
 
 	@classmethod
@@ -167,13 +167,13 @@ class Chunk:
 	file_path:str
 	"""Relative file path to the chunk"""
 
-	volume_index:int=1 # TODO: Per SMPTE 0429-9-2014 update, "Volume Count shall be 1."
+	volume_index:int = 1 # TODO: Per SMPTE 0429-9-2014 update, "Volume Count shall be 1."
 	"""Index of the volume containing the chunk"""
 
-	offset:int=0
+	offset:int = 0
 	"""Byte offset from the beginning of the assembled `Asset`"""
 
-	size:typing.Optional[int]=None
+	size:typing.Optional[int] = None
 	"""Size of the chunk data in bytes"""
 	# TODO: "If the Length parameter is absent, the length of the chunk shall be that of the asset as expressed by the respective Packing List."
 

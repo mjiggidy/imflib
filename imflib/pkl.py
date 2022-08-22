@@ -3,31 +3,32 @@
 
 import dataclasses, typing, datetime, uuid
 import xml.etree.ElementTree as et
-from imflib import xsd_datetime_to_datetime, xsd_optional_string, xsd_optional_usertext, UserText
+from imflib import xsd_datetime_to_datetime, xsd_optional_usertext, xsd_optional_security
+from imflib import UserText, Security
 
 @dataclasses.dataclass(frozen=True)
 class Asset:
 	"""An asset packed into this IMF package"""
-	
-	id:uuid.UUID
-	"""Unique asset identifier encoded as a urn:UUID [RFC 4122]"""
 
 	hash:str
 	"""Base64-encoded message digest of the asset"""
-
-	hash_algorithm:str # NOTE: Addition via SMPTE 2067-2
-	"""Name of the digest type used by the hash"""
-
+	
 	size:int
 	"""File size of the asset in bytes"""
 
 	type:str
 	"""MIME-type of the asset"""
 
-	original_file_name:typing.Optional[UserText]=""
+	hash_algorithm:str="http://www.w3.org/2000/09/xmldsig#sha1" # NOTE: Addition via SMPTE 2067-2
+	"""Name of the digest type used by the hash"""
+
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""Unique asset identifier encoded as a urn:UUID [RFC 4122]"""
+
+	original_file_name:typing.Optional[UserText]=None
 	"""Optional original file name of the asset when the PKL was created"""
 
-	annotation_text:typing.Optional[UserText]=""
+	annotation_text:typing.Optional[UserText]=None
 	"""Optional description of the asset"""
 
 	@classmethod
@@ -54,42 +55,49 @@ class Asset:
 			original_file_name=original_file_name,
 			annotation_text=annotation_text
 		)
+	
+	def __post_init__(self):
+		"""Validate additional constraints"""
+
+		# Size is an xs:PositiveInteger
+		if not self.size > 0: raise ValueError("Size must be a positive integer.")
+
+		# TODO: Add mime-type guessing via `mimetypes` module? Or maybe nah.
+
 
 @dataclasses.dataclass(frozen=True)
 class Pkl:
 	"""An IMF PKL Packing List"""
-
-	id:uuid.UUID
-	"""Unique package identifier encoded as a urn:UUID [RFC 4122]"""
-	
-	issue_date:datetime.datetime
-	"""Datetime this PKL was issued"""
 
 	issuer:UserText
 	"""The person or company that issued this PKL"""
 
 	creator:UserText
 	"""The facility or system that created this PKL"""
+	
+	issue_date:datetime.datetime=dataclasses.field(default_factory=datetime.datetime.now)
+	"""Datetime this PKL was issued"""
 
-	assets:list["Asset"]
+	assets:list["Asset"]=dataclasses.field(default_factory=list)
 	"""The list of `Asset` s contained in this package"""
 
-	annotation_text:typing.Optional[UserText]=""
+	id:uuid.UUID=dataclasses.field(default_factory=uuid.uuid4)
+	"""Unique package identifier encoded as a urn:UUID [RFC 4122]"""
+
+	annotation_text:typing.Optional[UserText]=None
 	"""Optional description of the distribution package"""
 
-	group_id:typing.Optional[str]=""
+	group_id:typing.Optional[uuid.UUID]=None
 	"""Optional UUID referencing a group of multiple packages to which this package belongs"""
 
-	icon_id:typing.Optional[str]=""
+	icon_id:typing.Optional[uuid.UUID]=None
 	"""Optional UUID reference to an image asset to be used as an icon"""
 
 	# TODO: Implement signing
 	# NOTE: Signature and Signer must both be present; maybe make this one thing
-	signature:typing.Optional[et.Element]=None
-	"""Optional digital signature authenticating the PKL"""
 
-	signer:typing.Optional[et.Element]=None
-	"""Optional identification of the entity signing the PKL"""
+	security:typing.Optional[Security]=None
+	"""Optional digital signer and signature authenticating the PKL"""
 
 
 	@classmethod
@@ -103,17 +111,24 @@ class Pkl:
 	def from_xml(cls, xml:et.Element, ns:typing.Optional[dict]=None)->"Pkl":
 		"""Parse a PKL from XML"""
 
+		print(xml.tag)
+
 		id = uuid.UUID(xml.find("Id", ns).text)
 		issuer = UserText.from_xml(xml.find("Issuer", ns))
 		creator = UserText.from_xml(xml.find("Creator", ns))
 		issue_date = xsd_datetime_to_datetime(xml.find("IssueDate",ns).text)
 
 		# TODO: Iterator...?
-		assets = [Asset.from_xml(asset,ns) for asset in xml.find("AssetList",ns)]
+		assets = [Asset.from_xml(asset,ns) for asset in xml.findall("AssetList/Asset",ns)]
 
 		annotation_text = xsd_optional_usertext(xml.find("AnnotationText", ns))
-		group_id = xsd_optional_string(xml.find("GroupId", ns))
-		icon_id = xsd_optional_string(xml.find("IconId", ns))
+		group_id = uuid.UUID(xml.find("GroupId", ns)) if xml.find("GroupId", ns) is not None else None
+		icon_id = uuid.UUID(xml.find("IconId", ns)) if xml.find("IconId", ns) is not None else None
+
+		security = xsd_optional_security(
+			xml_signer=xml.find("Signer",ns),
+			xml_signature=xml.find("ds:Signature",{"ds":"http://www.w3.org/2000/09/xmldsig#"})
+		)
 
 		return cls(
 			id=id,
@@ -123,7 +138,8 @@ class Pkl:
 			assets=assets,
 			annotation_text=annotation_text,
 			group_id=group_id,
-			icon_id=icon_id
+			icon_id=icon_id,
+			security=security
 		)
 	
 	def get_asset(self, id:str) -> "Asset":
